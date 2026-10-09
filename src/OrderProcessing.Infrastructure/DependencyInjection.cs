@@ -28,6 +28,7 @@ public static class DependencyInjection
             .ValidateOnStart();
         services.AddSingleton<IValidateOptions<OrderProcessingOptions>, OrderProcessingOptionsValidator>();
 
+        services.AddSingleton(TimeProvider.System);
         services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 
         services.AddScoped<IOrderRepository, OrderRepository>();

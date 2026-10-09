@@ -339,6 +339,32 @@ not review-loop outcomes.
   (idempotency, correlation header, Seq, pagination), the last of which changes
   the contract and needs its own specification and gate.
 
+## Wave 2 improvement delta (maintainability)
+
+- **Prompt**: the same tracked brief,
+  `docs/ORDER_PROCESSING_IMPROVEMENT_BRIEF.md`, this time Wave 2: IMP-05
+  explicit time, IMP-06 central compiler settings and an SDK pin, IMP-07 central
+  package management, IMP-08 stronger architecture checks, IMP-09 traceability.
+- **What the AI produced**: an explicit `DateTimeOffset` in the domain with a
+  `TimeProvider` seam; `Directory.Build.props`, `global.json`, and
+  `Directory.Packages.props`; assembly-reference, domain-surface, and
+  build/package-policy checks in the architecture test project; the
+  `docs/IMPROVEMENT_STATUS.md` traceability index; and ADR-0010.
+- **Issues found**: centralizing the build in this sandbox exposed a tooling
+  snag, because a shared-props change triggers an implicit NuGet restore that
+  tries to read the sandbox-blocked user config. Moving the domain to explicit
+  time meant touching every caller and every test. Once warnings became errors,
+  no existing warning surfaced, so the policy held.
+- **How we corrected it**: pointed `RestoreConfigFile` at the repository
+  `NuGet.Config` so restore does not touch the user config; threaded the
+  timestamp through the domain and the application and updated the tests; and
+  kept every exact package version, moving them into the central file without an
+  upgrade. The suite grew from 98 to 106 tests. Review approved round one after
+  the build-policy check was strengthened to assert evaluated MSBuild values.
+- **Human decisions**: scoped to Wave 2 and required the existing versions to be
+  preserved. Wave 3 (idempotency, correlation header, Seq, pagination) stays
+  deferred because it changes the contract and the deployment.
+
 ## Keeping this current
 
 Each stage appends one entry in the shape above: the prompt, what the AI

@@ -42,7 +42,7 @@ public sealed class Order
 
     public IReadOnlyCollection<OrderItem> Items => _readOnlyItems;
 
-    public static Order Create(IEnumerable<OrderItem>? items)
+    public static Order Create(IEnumerable<OrderItem>? items, DateTimeOffset now)
     {
         if (items is null)
         {
@@ -60,20 +60,20 @@ public sealed class Order
             materialized.Add(item);
         }
 
-        return new Order(Guid.NewGuid(), DateTimeOffset.UtcNow, materialized);
+        return new Order(Guid.NewGuid(), now.ToUniversalTime(), materialized);
     }
 
-    public void Process() =>
-        Transition(OrderStatus.Processing, "INVALID_ORDER_STATE", "Only pending orders can be processed.");
+    public void Process(DateTimeOffset now) =>
+        Transition(OrderStatus.Processing, "INVALID_ORDER_STATE", "Only pending orders can be processed.", now);
 
-    public void Ship() =>
-        Transition(OrderStatus.Shipped, "INVALID_ORDER_STATE", "Only processing orders can be shipped.");
+    public void Ship(DateTimeOffset now) =>
+        Transition(OrderStatus.Shipped, "INVALID_ORDER_STATE", "Only processing orders can be shipped.", now);
 
-    public void Deliver() =>
-        Transition(OrderStatus.Delivered, "INVALID_ORDER_STATE", "Only shipped orders can be delivered.");
+    public void Deliver(DateTimeOffset now) =>
+        Transition(OrderStatus.Delivered, "INVALID_ORDER_STATE", "Only shipped orders can be delivered.", now);
 
-    public void Cancel() =>
-        Transition(OrderStatus.Cancelled, "ORDER_NOT_CANCELLABLE", "Only pending orders can be cancelled.");
+    public void Cancel(DateTimeOffset now) =>
+        Transition(OrderStatus.Cancelled, "ORDER_NOT_CANCELLABLE", "Only pending orders can be cancelled.", now);
 
     public static bool IsLegal(OrderStatus from, OrderStatus to) => (from, to) switch
     {
@@ -95,7 +95,7 @@ public sealed class Order
         return total;
     }
 
-    private void Transition(OrderStatus next, string code, string message)
+    private void Transition(OrderStatus next, string code, string message, DateTimeOffset now)
     {
         if (!IsLegal(Status, next))
         {
@@ -103,7 +103,7 @@ public sealed class Order
         }
 
         Status = next;
-        UpdatedAt = DateTimeOffset.UtcNow;
+        UpdatedAt = now.ToUniversalTime();
         Version++;
     }
 }

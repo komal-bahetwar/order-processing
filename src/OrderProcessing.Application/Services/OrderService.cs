@@ -14,17 +14,19 @@ public sealed class OrderService : IOrderService
 
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<OrderService> _logger;
+    private readonly TimeProvider _timeProvider;
 
-    public OrderService(IUnitOfWork unitOfWork, ILogger<OrderService> logger)
+    public OrderService(IUnitOfWork unitOfWork, ILogger<OrderService> logger, TimeProvider timeProvider)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _timeProvider = timeProvider;
     }
 
     public async Task<OrderDto> CreateAsync(CreateOrderRequest request, CancellationToken cancellationToken = default)
     {
         var items = request.Items.Select(item => new OrderItem(item.ProductId, item.Quantity, item.UnitPrice));
-        var order = Order.Create(items);
+        var order = Order.Create(items, _timeProvider.GetUtcNow());
 
         _unitOfWork.Orders.Add(order);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -82,10 +84,10 @@ public sealed class OrderService : IOrderService
         switch (target)
         {
             case OrderStatus.Shipped:
-                order.Ship();
+                order.Ship(_timeProvider.GetUtcNow());
                 break;
             case OrderStatus.Delivered:
-                order.Deliver();
+                order.Deliver(_timeProvider.GetUtcNow());
                 break;
             default:
                 throw new DomainException(
@@ -105,7 +107,7 @@ public sealed class OrderService : IOrderService
             ?? throw NotFound(id);
 
         var from = order.Status;
-        order.Cancel();
+        order.Cancel(_timeProvider.GetUtcNow());
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         RecordTransition(order, from);
 

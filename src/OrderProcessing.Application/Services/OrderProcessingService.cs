@@ -12,16 +12,19 @@ public sealed class OrderProcessingService : IOrderProcessingService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<OrderProcessingService> _logger;
+    private readonly TimeProvider _timeProvider;
     private readonly int _batchSize;
     private readonly int _maxOrdersPerRun;
 
     public OrderProcessingService(
         IUnitOfWork unitOfWork,
         IOptions<OrderProcessingOptions> options,
-        ILogger<OrderProcessingService> logger)
+        ILogger<OrderProcessingService> logger,
+        TimeProvider timeProvider)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _timeProvider = timeProvider;
         _batchSize = options.Value.BatchSize;
         _maxOrdersPerRun = options.Value.MaxOrdersPerRun;
     }
@@ -67,7 +70,7 @@ public sealed class OrderProcessingService : IOrderProcessingService
                         continue;
                     }
 
-                    order.Process();
+                    order.Process(_timeProvider.GetUtcNow());
                     await _unitOfWork.SaveChangesAsync(cancellationToken);
 
                     processed++;

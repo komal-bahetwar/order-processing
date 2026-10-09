@@ -32,10 +32,10 @@ public class ConcurrencyTests : IClassFixture<OrderApiFactory>
         var firstReader = await first.Orders.GetByIdAsync(order.Id);
         var secondReader = await second.Orders.GetByIdAsync(order.Id);
 
-        firstReader!.Cancel();
+        firstReader!.Cancel(DateTimeOffset.UtcNow);
         await first.SaveChangesAsync();
 
-        secondReader!.Process();
+        secondReader!.Process(DateTimeOffset.UtcNow);
         var act = async () => await second.SaveChangesAsync();
 
         await act.Should().ThrowAsync<ConcurrencyConflictException>();
@@ -56,18 +56,18 @@ public class ConcurrencyTests : IClassFixture<OrderApiFactory>
         {
             var winner = winnerScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
             var winnerReader = await winner.Orders.GetByIdAsync(conflicting.Id);
-            winnerReader!.Cancel();
+            winnerReader!.Cancel(DateTimeOffset.UtcNow);
             await winner.SaveChangesAsync();
         }
 
-        conflictingReader!.Process();
+        conflictingReader!.Process(DateTimeOffset.UtcNow);
         var act = async () => await stale.SaveChangesAsync();
         await act.Should().ThrowAsync<ConcurrencyConflictException>();
 
         stale.ClearChanges();
 
         var healthyReader = await stale.Orders.GetByIdAsync(healthy.Id);
-        healthyReader!.Process();
+        healthyReader!.Process(DateTimeOffset.UtcNow);
         await stale.SaveChangesAsync();
 
         var checkedOrder = await _client.GetFromJsonAsync<OrderDto>($"/api/orders/{healthy.Id}");

@@ -6,13 +6,17 @@ namespace OrderProcessing.UnitTests;
 
 public class DomainHardeningTests
 {
+    private static readonly DateTimeOffset Now = new(2026, 10, 10, 12, 0, 0, TimeSpan.Zero);
+
     private static OrderItem Item(int quantity = 1, decimal unitPrice = 10m) =>
         new(Guid.NewGuid(), quantity, unitPrice);
+
+    private static Order NewOrder(params OrderItem[] items) => Order.Create(items, Now);
 
     [Fact]
     public void Items_is_a_read_only_collection_and_cannot_be_cast_to_a_list()
     {
-        var order = Order.Create([Item()]);
+        var order = NewOrder(Item());
 
         order.Items.Should().BeAssignableTo<ReadOnlyCollection<OrderItem>>();
         (order.Items as List<OrderItem>).Should().BeNull();
@@ -21,7 +25,7 @@ public class DomainHardeningTests
     [Fact]
     public void Items_rejects_add_remove_and_clear()
     {
-        var order = Order.Create([Item()]);
+        var order = NewOrder(Item());
         var collection = (ICollection<OrderItem>)order.Items;
 
         ((Action)(() => collection.Add(Item()))).Should().Throw<NotSupportedException>();
@@ -33,7 +37,7 @@ public class DomainHardeningTests
     public void Mutating_the_caller_list_after_creation_does_not_change_the_order()
     {
         var input = new List<OrderItem> { Item(1, 10m) };
-        var order = Order.Create(input);
+        var order = Order.Create(input, Now);
 
         input.Add(Item(5, 100m));
 
@@ -44,7 +48,7 @@ public class DomainHardeningTests
     [Fact]
     public void Null_sequence_is_rejected()
     {
-        Action act = () => Order.Create(null!);
+        Action act = () => Order.Create(null!, Now);
 
         act.Should().Throw<DomainException>().Which.Code.Should().Be("ORDER_EMPTY");
     }
@@ -52,7 +56,7 @@ public class DomainHardeningTests
     [Fact]
     public void Null_element_is_rejected()
     {
-        Action act = () => Order.Create([Item(), null!]);
+        Action act = () => Order.Create([Item(), null!], Now);
 
         act.Should().Throw<DomainException>().Which.Code.Should().Be("ORDER_ITEM_NULL");
     }
@@ -96,7 +100,7 @@ public class DomainHardeningTests
         var first = new OrderItem(Guid.NewGuid(), 1, half);
         var second = new OrderItem(Guid.NewGuid(), 1, half);
 
-        Action act = () => Order.Create([first, second]);
+        Action act = () => Order.Create([first, second], Now);
 
         act.Should().Throw<DomainException>().Which.Code.Should().Be("AMOUNT_OUT_OF_RANGE");
     }
@@ -104,7 +108,7 @@ public class DomainHardeningTests
     [Fact]
     public void A_zero_priced_item_is_accepted()
     {
-        var order = Order.Create([new OrderItem(Guid.NewGuid(), 3, 0m)]);
+        var order = NewOrder(new OrderItem(Guid.NewGuid(), 3, 0m));
 
         order.TotalAmount.Should().Be(0m);
     }
@@ -151,7 +155,7 @@ public class DomainHardeningTests
     [MemberData(nameof(StateMethodCases))]
     public void Transition_matrix_holds(OrderStatus start, string method)
     {
-        var order = Order.Create([Item()]);
+        var order = NewOrder(Item());
         MoveTo(order, start);
         var versionBefore = order.Version;
 
@@ -198,10 +202,10 @@ public class DomainHardeningTests
     {
         switch (method)
         {
-            case "Process": order.Process(); break;
-            case "Ship": order.Ship(); break;
-            case "Deliver": order.Deliver(); break;
-            case "Cancel": order.Cancel(); break;
+            case "Process": order.Process(Now); break;
+            case "Ship": order.Ship(Now); break;
+            case "Deliver": order.Deliver(Now); break;
+            case "Cancel": order.Cancel(Now); break;
             default: throw new ArgumentOutOfRangeException(nameof(method));
         }
     }
@@ -213,19 +217,19 @@ public class DomainHardeningTests
             case OrderStatus.Pending:
                 return;
             case OrderStatus.Processing:
-                order.Process();
+                order.Process(Now);
                 return;
             case OrderStatus.Shipped:
-                order.Process();
-                order.Ship();
+                order.Process(Now);
+                order.Ship(Now);
                 return;
             case OrderStatus.Delivered:
-                order.Process();
-                order.Ship();
-                order.Deliver();
+                order.Process(Now);
+                order.Ship(Now);
+                order.Deliver(Now);
                 return;
             case OrderStatus.Cancelled:
-                order.Cancel();
+                order.Cancel(Now);
                 return;
             default:
                 throw new ArgumentOutOfRangeException(nameof(target));
