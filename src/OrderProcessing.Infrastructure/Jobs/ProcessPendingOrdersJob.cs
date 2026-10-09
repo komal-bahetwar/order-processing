@@ -24,8 +24,12 @@ public sealed class ProcessPendingOrdersJob
         using var scope = _scopeFactory.CreateScope();
         var processingService = scope.ServiceProvider.GetRequiredService<IOrderProcessingService>();
 
-        var processed = await processingService.ProcessPendingOrdersAsync(cancellationToken);
-
-        _logger.LogInformation("Automatic move processed {ProcessedCount} pending orders.", processed);
+        // Each run gets its own identifier, shared across every event it emits.
+        var backgroundRunId = Guid.NewGuid().ToString("N");
+        using (_logger.BeginScope(new Dictionary<string, object> { ["BackgroundRunId"] = backgroundRunId }))
+        {
+            var processed = await processingService.ProcessPendingOrdersAsync(cancellationToken);
+            _logger.LogInformation("Automatic move processed {ProcessedCount} pending orders.", processed);
+        }
     }
 }

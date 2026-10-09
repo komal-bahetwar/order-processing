@@ -69,7 +69,9 @@ Base path `/api/orders`.
 | POST | `/api/orders/{id}/cancel` | Cancel a pending order |
 
 Errors use one shared shape with a stable code and a correlation identifier.
-The contract is in `openapi/order-processing.yaml`.
+Every response carries an `X-Correlation-ID` header; send one on a request
+(a single value, at most 64 characters) to correlate across retries. The
+contract is in `openapi/order-processing.yaml`.
 
 ## Health
 

@@ -7,8 +7,8 @@ it, and the evidence. It is the traceability index for the improvement effort.
 It separates what is implemented from what is planned, so no designed-only item
 is read as shipped.
 
-Last updated: 2026-10-10. Test suite at this point: 106 tests, all passing
-(62 unit, 11 architecture, 33 integration).
+Last updated: 2026-10-10. Test suite at this point: 114 tests, all passing
+(62 unit, 11 architecture, 41 integration).
 
 ## Status by work package
 
@@ -24,7 +24,7 @@ Last updated: 2026-10-10. Test suite at this point: 106 tests, all passing
 | IMP-08 | P2 | Implemented | Extended `tests/OrderProcessing.ArchitectureTests` (`LayeringTests`, `BoundaryTests`) | The architecture test project itself |
 | IMP-09 | P2 | Implemented | This document plus the AI-use log | `docs/AI_USAGE.md` |
 | IMP-10 | P2 | Not started (Wave 3) | Requires an `Idempotency-Key` contract, a new table, and new error codes | n/a |
-| IMP-11 | P2 | Not started (Wave 3) | Requires the correlation-header identifier model | n/a |
+| IMP-11 | P2 | Implemented (Wave 3) | Correlation middleware (`src/OrderProcessing.Api/Correlation/CorrelationMiddleware.cs`), request completion logging, and a job `BackgroundRunId` scope; the contract adds the `X-Correlation-ID` header (ADR-0011) | `CorrelationTests` (7) and `BackgroundRunScopeTests` |
 | IMP-12 | P2 | Implemented (Wave 3) | Optional Seq sink in `src/OrderProcessing.Api/Program.cs`; `seq` service in `docker-compose.yml`; README walkthrough | Verified: Seq UI 200 and the API serves with the sink configured; the query smoke is manual (sign in) |
 | IMP-13 | P1 | Implemented | `OrderProcessingOptionsValidator`, `ValidateOnStart`, the budgeted drain in `OrderProcessingService`, fail-fast registration in `Program.cs`, `[AutomaticRetry]` on the job | `OptionsValidationTests`; `BacklogDrainTests`; `TwoInstanceProcessingTests` |
 | IMP-14 | P1 | Not started (Wave 3) | Requires a cursor contract extension | n/a |
@@ -48,9 +48,10 @@ rather than restating them.
 - **Background processing and retries**: `ADR-0003`, the `[AutomaticRetry]`
   policy on `ProcessPendingOrdersJob`, and the budgeted drain in
   `OrderProcessingService`.
-- **Correlation**: the `CorrelationId` log property and the error `traceId`;
-  the full identifier model is IMP-11 (future).
+- **Correlation**: the `X-Correlation-ID` header and the request completion log
+  (IMP-11; ADR-0011); the background-run identifier is the `BackgroundRunId`
+  scope.
 - **Idempotency**: a future extension, IMP-10; the contract of record does not
   yet include an `Idempotency-Key`.
-- **Structured logs in a browser (Seq)**: a future extension, IMP-12; logs are
-  console JSON today.
+- **Structured logs in a browser (Seq)**: implemented, IMP-12; the console sink
+  always works and Seq is an optional secondary sink.

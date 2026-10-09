@@ -365,6 +365,29 @@ not review-loop outcomes.
   preserved. Wave 3 (idempotency, correlation header, Seq, pagination) stays
   deferred because it changes the contract and the deployment.
 
+## Wave 3 improvement delta (contract and observability)
+
+Wave 3 is being done one item at a time, because each changes the contract or
+the deployment. Logged here as it lands.
+
+- **IMP-12, Seq.** Added an optional Seq sink (`Serilog.Sinks.Seq`) enabled by
+  `Seq:Url`, a `seq` service in compose, and a README walkthrough. Console
+  logging stays and a Seq outage cannot affect requests or readiness.
+  - **Issues found**: the Seq image pull failed in the sandbox because the
+    Docker credential helper was unreachable; pulling with an anonymous Docker
+    config worked, and the compose file uses a pinned image tag, not `latest`.
+- **IMP-11, correlation model.** A validated `X-Correlation-ID` request header,
+  echoed on the response, a Serilog request completion event, and a
+  `BackgroundRunId` `ILogger` scope for each job run. `RequestId` stays the
+  `TraceIdentifier` used by the error `traceId`. See ADR-0011.
+  - **Issues found**: the response header was lost on error paths, because
+    ASP.NET's exception handler clears response headers before writing the error
+    body; the fix sets the header through `OnStarting`. The "present but empty"
+    header case cannot be sent by the `HttpClient` transport, so it is covered by
+    the middleware's validation rather than an end-to-end test.
+- **Human decisions**: one item at a time; IMP-14 (pagination) and IMP-10
+  (idempotency) remain, each needing its own contract delta and gate.
+
 ## Keeping this current
 
 Each stage appends one entry in the shape above: the prompt, what the AI

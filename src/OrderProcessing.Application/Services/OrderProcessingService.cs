@@ -31,12 +31,10 @@ public sealed class OrderProcessingService : IOrderProcessingService
 
     public async Task<int> ProcessPendingOrdersAsync(CancellationToken cancellationToken = default)
     {
-        var backgroundRunId = Guid.NewGuid().ToString("N");
         var started = Stopwatch.GetTimestamp();
 
         _logger.LogInformation(
-            "Automatic move run {BackgroundRunId} starting; batch {BatchSize}, order budget {Budget}.",
-            backgroundRunId,
+            "Automatic move run starting; batch {BatchSize}, order budget {Budget}.",
             _batchSize,
             _maxOrdersPerRun);
 
@@ -76,11 +74,10 @@ public sealed class OrderProcessingService : IOrderProcessingService
                     processed++;
                     progressed = true;
                     _logger.LogInformation(
-                        "Order {OrderId} transitioned {OldStatus} -> {NewStatus} in run {BackgroundRunId}.",
+                        "Order {OrderId} transitioned {OldStatus} -> {NewStatus}.",
                         order.Id,
                         OrderStatus.Pending,
-                        order.Status,
-                        backgroundRunId);
+                        order.Status);
                     OrderMetrics.Transitions.Add(
                         1,
                         new KeyValuePair<string, object?>("from", "PENDING"),
@@ -109,8 +106,7 @@ public sealed class OrderProcessingService : IOrderProcessingService
         var elapsed = Stopwatch.GetElapsedTime(started);
         var budgetExhausted = processed >= _maxOrdersPerRun;
         _logger.LogInformation(
-            "Automatic move run {BackgroundRunId} completed; processed {Processed}, skipped {Skipped}, selected {Selected}, budgetExhausted {BudgetExhausted}, in {ElapsedMs} ms.",
-            backgroundRunId,
+            "Automatic move run completed; processed {Processed}, skipped {Skipped}, selected {Selected}, budgetExhausted {BudgetExhausted}, in {ElapsedMs} ms.",
             processed,
             skipped,
             selected,

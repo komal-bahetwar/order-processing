@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
+using OrderProcessing.Api.Correlation;
 using OrderProcessing.Api.Dashboard;
 using OrderProcessing.Api.ErrorHandling;
 using OrderProcessing.Api.Health;
@@ -15,7 +16,6 @@ using OrderProcessing.Application.Validation;
 using OrderProcessing.Infrastructure;
 using OrderProcessing.Infrastructure.Persistence;
 using Serilog;
-using Serilog.Context;
 using Serilog.Formatting.Compact;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -91,14 +91,8 @@ await ApplyMigrationsAsync(app);
 // The automatic move is a mandatory capability: fail startup if it cannot be scheduled.
 app.Services.RegisterRecurringJobs();
 
-app.Use(async (context, next) =>
-{
-    using (LogContext.PushProperty("CorrelationId", context.TraceIdentifier))
-    {
-        await next();
-    }
-});
-
+app.UseMiddleware<CorrelationMiddleware>();
+app.UseSerilogRequestLogging();
 app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())

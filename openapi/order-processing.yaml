@@ -15,6 +15,11 @@ info:
     The list result is bounded: at most 20 items by default. A request for more
     than 100 succeeds and returns at most 100, ordered oldest first by creation
     time.
+
+    Every response carries an X-Correlation-ID header. A caller may supply one on
+    the request as a single value of at most 64 characters from letters, digits,
+    '.', '_', and '-'; it is echoed back. A missing header is given a generated
+    value, and an invalid or repeated header is rejected with 400 VALIDATION_ERROR.
   contact:
     name: Order Processing team
 servers:
@@ -34,6 +39,8 @@ paths:
         quantity of zero or less, or a negative unit price is rejected and no
         order is captured.
       tags: [Orders]
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
       requestBody:
         required: true
         content:
@@ -114,6 +121,7 @@ paths:
             type: integer
             minimum: 1
             default: 20
+        - $ref: '#/components/parameters/CorrelationIdHeader'
       responses:
         '200':
           description: The matching orders, possibly empty.
@@ -158,6 +166,7 @@ paths:
       tags: [Orders]
       parameters:
         - $ref: '#/components/parameters/OrderId'
+        - $ref: '#/components/parameters/CorrelationIdHeader'
       responses:
         '200':
           description: The requested order.
@@ -202,6 +211,7 @@ paths:
       tags: [Orders]
       parameters:
         - $ref: '#/components/parameters/OrderId'
+        - $ref: '#/components/parameters/CorrelationIdHeader'
       requestBody:
         required: true
         content:
@@ -257,6 +267,7 @@ paths:
       tags: [Orders]
       parameters:
         - $ref: '#/components/parameters/OrderId'
+        - $ref: '#/components/parameters/CorrelationIdHeader'
       responses:
         '200':
           description: The cancelled order.
@@ -300,6 +311,19 @@ components:
       schema:
         type: string
         format: uuid
+    CorrelationIdHeader:
+      name: X-Correlation-ID
+      in: header
+      required: false
+      description: |
+        An optional caller-supplied correlation identifier, echoed in the
+        X-Correlation-ID response header. At most 64 characters from letters,
+        digits, '.', '_', and '-'. An invalid or repeated value is rejected with
+        400.
+      schema:
+        type: string
+        maxLength: 64
+        pattern: '^[A-Za-z0-9._-]+$'
   responses:
     BadRequest:
       description: |
@@ -531,4 +555,7 @@ components:
           description: A human-readable explanation of this occurrence.
         traceId:
           type: string
-          description: The correlation identifier that ties the request to the change it caused.
+          description: |
+            The per-request trace identifier for this occurrence, distinct from
+            the X-Correlation-ID header. Use it to find the server-side log
+            events for this exact request.
