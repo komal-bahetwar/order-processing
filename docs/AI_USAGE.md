@@ -385,8 +385,16 @@ the deployment. Logged here as it lands.
     body; the fix sets the header through `OnStarting`. The "present but empty"
     header case cannot be sent by the `HttpClient` transport, so it is covered by
     the middleware's validation rather than an end-to-end test.
-- **Human decisions**: one item at a time; IMP-14 (pagination) and IMP-10
-  (idempotency) remain, each needing its own contract delta and gate.
+- **IMP-14, pagination.** An optional `cursor` parameter and an `X-Next-Cursor`
+  response header, keyset over `(CreatedAt, Id)`, with the array body preserved.
+  See ADR-0012.
+  - **Issues found**: the end-to-end tests share a container per test class by
+    default, which made exact counts across the test class fragile; the
+    pagination tests were made self-contained with a container per test. The
+    same-timestamp tie case depends on the database's `Id` ordering, so the seek
+    predicate is evaluated in the database, not the client.
+- **Human decisions**: one item at a time; IMP-10 (idempotency) remains, and
+  needs its own contract delta and gate.
 
 ## Keeping this current
 

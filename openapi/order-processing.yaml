@@ -20,6 +20,10 @@ info:
     the request as a single value of at most 64 characters from letters, digits,
     '.', '_', and '-'; it is echoed back. A missing header is given a generated
     value, and an invalid or repeated header is rejected with 400 VALIDATION_ERROR.
+
+    Listing is keyset paginated. The response body stays an array; when more
+    orders match, the response includes an X-Next-Cursor header to pass back as
+    the cursor parameter. Pagination is not a snapshot.
   contact:
     name: Order Processing team
 servers:
@@ -121,10 +125,28 @@ paths:
             type: integer
             minimum: 1
             default: 20
+        - name: cursor
+          in: query
+          required: false
+          description: |
+            An opaque continuation token from a previous response's X-Next-Cursor
+            header. Pass it with the same status filter to fetch the next page.
+            A malformed or oversized value is rejected with 400. This is not a
+            snapshot: concurrent inserts or status changes can affect traversal.
+          schema:
+            type: string
+            maxLength: 128
         - $ref: '#/components/parameters/CorrelationIdHeader'
       responses:
         '200':
           description: The matching orders, possibly empty.
+          headers:
+            X-Next-Cursor:
+              description: |
+                Present when more orders match; pass it as the cursor query
+                parameter to fetch the next page. Omitted on the final page.
+              schema:
+                type: string
           content:
             application/json:
               schema:

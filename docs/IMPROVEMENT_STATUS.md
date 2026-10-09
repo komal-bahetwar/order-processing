@@ -7,8 +7,8 @@ it, and the evidence. It is the traceability index for the improvement effort.
 It separates what is implemented from what is planned, so no designed-only item
 is read as shipped.
 
-Last updated: 2026-10-10. Test suite at this point: 114 tests, all passing
-(62 unit, 11 architecture, 41 integration).
+Last updated: 2026-10-10. Test suite at this point: 120 tests, all passing
+(62 unit, 11 architecture, 47 integration).
 
 ## Status by work package
 
@@ -27,7 +27,7 @@ Last updated: 2026-10-10. Test suite at this point: 114 tests, all passing
 | IMP-11 | P2 | Implemented (Wave 3) | Correlation middleware (`src/OrderProcessing.Api/Correlation/CorrelationMiddleware.cs`), request completion logging, and a job `BackgroundRunId` scope; the contract adds the `X-Correlation-ID` header (ADR-0011) | `CorrelationTests` (7) and `BackgroundRunScopeTests` |
 | IMP-12 | P2 | Implemented (Wave 3) | Optional Seq sink in `src/OrderProcessing.Api/Program.cs`; `seq` service in `docker-compose.yml`; README walkthrough | Verified: Seq UI 200 and the API serves with the sink configured; the query smoke is manual (sign in) |
 | IMP-13 | P1 | Implemented | `OrderProcessingOptionsValidator`, `ValidateOnStart`, the budgeted drain in `OrderProcessingService`, fail-fast registration in `Program.cs`, `[AutomaticRetry]` on the job | `OptionsValidationTests`; `BacklogDrainTests`; `TwoInstanceProcessingTests` |
-| IMP-14 | P1 | Not started (Wave 3) | Requires a cursor contract extension | n/a |
+| IMP-14 | P1 | Implemented (Wave 3) | Keyset cursor over `(CreatedAt, Id)` (`src/OrderProcessing.Application/Pagination/OrderCursor.cs`), `X-Next-Cursor` header, array body preserved; the contract adds the `cursor` parameter and header (ADR-0012) | `PaginationTests` (6 tests) |
 
 Wave 3 items change the OpenAPI contract or the deployment, so each needs its
 own specification or ADR delta and a human gate before implementation, as the

@@ -8,6 +8,8 @@ public interface IOrderRepository
 
     Task<IReadOnlyList<Order>> GetAsync(
         OrderStatus? status,
+        DateTimeOffset? afterCreatedAt,
+        Guid? afterId,
         int take,
         CancellationToken cancellationToken = default);
 

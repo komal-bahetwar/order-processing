@@ -20,6 +20,8 @@ public sealed class OrderRepository : IOrderRepository
 
     public async Task<IReadOnlyList<Order>> GetAsync(
         OrderStatus? status,
+        DateTimeOffset? afterCreatedAt,
+        Guid? afterId,
         int take,
         CancellationToken cancellationToken = default)
     {
@@ -31,6 +33,15 @@ public sealed class OrderRepository : IOrderRepository
         if (status is not null)
         {
             query = query.Where(order => order.Status == status);
+        }
+
+        if (afterCreatedAt is not null && afterId is not null)
+        {
+            // Keyset seek on the (CreatedAt, Id) ordering; the Id comparison runs in the
+            // database so it agrees with the database's tie-break ordering.
+            query = query.Where(order =>
+                order.CreatedAt > afterCreatedAt.Value ||
+                (order.CreatedAt == afterCreatedAt.Value && order.Id.CompareTo(afterId.Value) > 0));
         }
 
         return await query

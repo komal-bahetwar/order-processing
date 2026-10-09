@@ -1,5 +1,6 @@
 using FluentValidation;
 using OrderProcessing.Application.Dtos;
+using OrderProcessing.Application.Pagination;
 using OrderProcessing.Domain;
 
 namespace OrderProcessing.Application.Validation;
@@ -17,5 +18,11 @@ public sealed class ListOrdersQueryValidator : AbstractValidator<ListOrdersQuery
             .Must(status => string.IsNullOrWhiteSpace(status) || OrderStatusNames.TryParse(status, out _))
             .WithErrorCode("VALIDATION_ERROR")
             .WithMessage("The status filter is not a known order status.");
+
+        RuleFor(query => query.Cursor)
+            .MaximumLength(OrderCursor.MaxLength)
+            .When(query => query.Cursor is not null)
+            .WithErrorCode("VALIDATION_ERROR")
+            .WithMessage($"The cursor must be at most {OrderCursor.MaxLength} characters.");
     }
 }

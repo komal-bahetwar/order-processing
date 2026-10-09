@@ -54,12 +54,20 @@ public sealed class OrdersController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<OrderDto>>> List(
         [FromQuery] string? status,
         [FromQuery] int limit = 20,
+        [FromQuery] string? cursor = null,
         CancellationToken cancellationToken = default)
     {
         await _listValidator.ValidateAndThrowAsync(
-            new ListOrdersQuery(status, limit), cancellationToken);
+            new ListOrdersQuery(status, limit, cursor), cancellationToken);
 
-        return Ok(await _orderService.ListAsync(status, limit, cancellationToken));
+        var page = await _orderService.ListAsync(status, limit, cursor, cancellationToken);
+
+        if (page.NextCursor is not null)
+        {
+            Response.Headers["X-Next-Cursor"] = page.NextCursor;
+        }
+
+        return Ok(page.Items);
     }
 
     [HttpPatch("{id}/status")]

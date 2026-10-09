@@ -73,6 +73,12 @@ Every response carries an `X-Correlation-ID` header; send one on a request
 (a single value, at most 64 characters) to correlate across retries. The
 contract is in `openapi/order-processing.yaml`.
 
+Listing is keyset paginated. The response stays an array; when more orders
+match, it includes an `X-Next-Cursor` header. Pass that value back as
+`?cursor=` with the same `status` filter to fetch the next page. The final page
+omits the header. Pagination is not a snapshot: concurrent inserts or status
+changes can affect traversal.
+
 ## Health
 
 Two probes, the kind an orchestrator or load balancer polls:

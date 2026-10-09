@@ -20,4 +20,6 @@ public sealed record CreateOrderRequest(IReadOnlyList<CreateOrderItemRequest> It
 
 public sealed record UpdateStatusRequest(string Status);
 
-public sealed record ListOrdersQuery(string? Status, int Limit);
+public sealed record ListOrdersQuery(string? Status, int Limit, string? Cursor);
+
+public sealed record OrderPage(IReadOnlyList<OrderDto> Items, string? NextCursor);

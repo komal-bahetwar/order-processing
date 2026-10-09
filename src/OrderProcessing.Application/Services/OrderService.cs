@@ -3,6 +3,7 @@ using OrderProcessing.Application.Abstractions;
 using OrderProcessing.Application.Dtos;
 using OrderProcessing.Application.Mapping;
 using OrderProcessing.Application.Observability;
+using OrderProcessing.Application.Pagination;
 using OrderProcessing.Domain;
 
 namespace OrderProcessing.Application.Services;
@@ -42,9 +43,10 @@ public sealed class OrderService : IOrderService
         return order.ToDto();
     }
 
-    public async Task<IReadOnlyList<OrderDto>> ListAsync(
+    public async Task<OrderPage> ListAsync(
         string? status,
         int limit,
+        string? cursor,
         CancellationToken cancellationToken = default)
     {
         OrderStatus? filter = null;
@@ -58,11 +60,34 @@ public sealed class OrderService : IOrderService
             filter = parsed;
         }
 
+        DateTimeOffset? afterCreatedAt = null;
+        Guid? afterId = null;
+        if (!string.IsNullOrWhiteSpace(cursor))
+        {
+            if (!OrderCursor.TryDecode(cursor, out var cursorCreatedAt, out var cursorId))
+            {
+                throw new DomainException("VALIDATION_ERROR", "The cursor is not valid.");
+            }
+
+            afterCreatedAt = cursorCreatedAt;
+            afterId = cursorId;
+        }
+
         var take = limit < 1 ? DefaultLimit : Math.Min(limit, MaxLimit);
 
-        var orders = await _unitOfWork.Orders.GetAsync(filter, take, cancellationToken);
+        // Read one extra row to detect whether a further page exists.
+        var orders = await _unitOfWork.Orders.GetAsync(
+            filter, afterCreatedAt, afterId, take + 1, cancellationToken);
 
-        return orders.Select(order => order.ToDto()).ToList();
+        string? nextCursor = null;
+        if (orders.Count > take)
+        {
+            orders = orders.Take(take).ToList();
+            var last = orders[^1];
+            nextCursor = OrderCursor.Encode(last.CreatedAt, last.Id);
+        }
+
+        return new OrderPage(orders.Select(order => order.ToDto()).ToList(), nextCursor);
     }
 
     public async Task<OrderDto> UpdateStatusAsync(Guid id, string status, CancellationToken cancellationToken = default)
