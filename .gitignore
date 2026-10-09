@@ -9,6 +9,7 @@ artifacts/
 # Local toolchain state (see AGENTS.md)
 .dotnet/
 .nuget/
+.local/
 
 # OS and editor
 .DS_Store

@@ -167,6 +167,39 @@ tell process-agent use apart from ad hoc assistant use.
   and the design context's admin status-override was set aside for a future
   phase. G3 is the human's to record.
 
+### S4, Implementation
+
+- **Prompt**: the runbook S4 stage prompt, applied to the stories as one
+  vertical slice rather than one prompt per story.
+- **What the AI produced**: the layered .NET 10 solution (domain, application,
+  infrastructure, api), the EF Core migration, the Hangfire recurring job, the
+  unit and integration test suites, the Docker Compose setup, and the README.
+- **Issues found**: three build and runtime issues, then a code-review round.
+  Hangfire pulled a vulnerable transitive `Newtonsoft.Json 11.0.1`. An EF Core
+  patch conflict broke the build (Npgsql pinned `Relational 10.0.4` while
+  `Design` resolved to `10.0.12`). The first migration ran and failed because EF
+  generated PascalCase columns while the design's check constraints reference
+  snake_case columns. The independent code review then found a real blocker and
+  four majors: the list endpoint did not match the contract (it used
+  `page`/`pageSize` and a wrapper while the contract uses `limit` and a bare
+  array), the single error shape was not produced for unexpected or
+  model-binding failures, a single concurrency conflict aborted the rest of the
+  automatic-move batch, the observability budget was unimplemented, and the
+  tests fell short of the test strategy.
+- **How we corrected it**: pinned `Newtonsoft.Json` to `13.0.4` and EF Core
+  `Relational` to `10.0.12`; mapped every column to snake_case so the schema
+  matches the design; aligned the list endpoint to the contract; wrote one error
+  shape for every failure including `500`; reworked the automatic move to fetch
+  ids, process one order at a time, and clear the change tracker on a conflict
+  so the batch continues; added a per-transition structured log line and counter
+  and a correlation id on log lines; and added the missing tests. Round two was
+  approved.
+- **Human decisions**: chose to fix the blocker and majors before the gate and
+  to record the remaining minor findings as debt. At the gate the human also
+  asked whether clean architecture was enforced or merely assumed, so an
+  architecture test project was added that proves the dependency direction and
+  the ORM confinement (5 tests). The build and 45 tests are green.
+
 ## Human corrections to AI output
 
 The assignment asks what the AI got wrong and how we corrected it. These are the
