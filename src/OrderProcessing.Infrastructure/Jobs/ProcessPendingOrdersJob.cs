@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OrderProcessing.Application.Services;
@@ -17,6 +18,7 @@ public sealed class ProcessPendingOrdersJob
         _logger = logger;
     }
 
+    [AutomaticRetry(Attempts = 3, OnAttemptsExceeded = AttemptsExceededAction.Fail)]
     public async Task RunAsync(CancellationToken cancellationToken)
     {
         using var scope = _scopeFactory.CreateScope();

@@ -77,14 +77,8 @@ var app = builder.Build();
 
 await ApplyMigrationsAsync(app);
 
-try
-{
-    app.Services.RegisterRecurringJobs();
-}
-catch (Exception exception)
-{
-    app.Logger.LogWarning(exception, "Recurring jobs could not be registered at startup.");
-}
+// The automatic move is a mandatory capability: fail startup if it cannot be scheduled.
+app.Services.RegisterRecurringJobs();
 
 app.Use(async (context, next) =>
 {

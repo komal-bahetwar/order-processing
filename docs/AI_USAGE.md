@@ -309,6 +309,36 @@ The README now documents testing the health probes and opening the dashboard.
 The three fixes are code and configuration changes, committed after the gate,
 not review-loop outcomes.
 
+## Wave 1 improvement delta (after G7)
+
+- **Prompt**: an external improvement brief the human supplied (kept in the
+  ignored `docs/scratch/`), which listed 14 work packages. The human selected
+  Wave 1: IMP-01 to IMP-04 (correctness hardening) and IMP-13 (scheduling
+  reliability).
+- **What the AI produced**: a read-only aggregate collection; domain null and
+  identity guards; shared money range rules; status parsing by defined name; an
+  explicit transition relation with exhaustive matrices; validated scheduling
+  options, a budgeted backlog drain, a fail-fast recurring-job registration, and
+  an explicit retry policy; with unit and integration tests, and ADR-0009.
+- **Issues found**: verified before changing anything, a create request with a
+  null item, a price above the storage ceiling, and a decimal overflow each
+  returned HTTP 500; `GET /api/orders?status=999` returned 200 with an empty
+  array; the aggregate exposed its mutable backing list; and the scheduling
+  options were unvalidated with a single-batch run and a swallowed registration
+  failure. The reviewer approved round 1 but required evidence: the multi-batch
+  drain, the options/retry policy, and a service-level conflict were untested.
+- **How we corrected it**: centralized the rules in the domain so invalid input
+  returns 400 with no persisted rows, made the collection genuinely read-only,
+  parsed statuses by name, validated the options at startup, drained the backlog
+  across batches within the budget, failed startup on a registration failure,
+  and added the missing tests and run logging. Round two approved. The suite
+  grew from 45 to 98 tests. Re-verified on the running container: the three
+  500s and the `999` case now return 400, and a valid create still returns 201.
+- **Human decisions**: scoped the work to Wave 1 and deferred Waves 2 (build
+  centralization, explicit time, stronger architecture checks) and 3
+  (idempotency, correlation header, Seq, pagination), the last of which changes
+  the contract and needs its own specification and gate.
+
 ## Keeping this current
 
 Each stage appends one entry in the shape above: the prompt, what the AI

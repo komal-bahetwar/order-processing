@@ -1,17 +1,20 @@
+using System.Collections.ObjectModel;
+
 namespace OrderProcessing.Domain;
 
 public sealed class Order
 {
     private readonly List<OrderItem> _items = [];
+    private readonly ReadOnlyCollection<OrderItem> _readOnlyItems;
 
     private Order()
     {
+        _readOnlyItems = _items.AsReadOnly();
     }
 
-    private Order(Guid id, DateTimeOffset createdAt, IEnumerable<OrderItem> items)
+    private Order(Guid id, DateTimeOffset createdAt, IReadOnlyList<OrderItem> items)
     {
-        var materialized = items.ToList();
-        if (materialized.Count == 0)
+        if (items.Count == 0)
         {
             throw new DomainException("ORDER_EMPTY", "An order must contain at least one item.");
         }
@@ -20,8 +23,9 @@ public sealed class Order
         Status = OrderStatus.Pending;
         CreatedAt = createdAt;
         Version = 0;
-        _items.AddRange(materialized);
-        TotalAmount = _items.Sum(item => item.LineTotal);
+        _items.AddRange(items);
+        _readOnlyItems = _items.AsReadOnly();
+        TotalAmount = ComputeTotal(_items);
     }
 
     public Guid Id { get; private set; }
@@ -36,45 +40,68 @@ public sealed class Order
 
     public decimal TotalAmount { get; private set; }
 
-    public IReadOnlyCollection<OrderItem> Items => _items;
+    public IReadOnlyCollection<OrderItem> Items => _readOnlyItems;
 
-    public static Order Create(IEnumerable<OrderItem> items) =>
-        new(Guid.NewGuid(), DateTimeOffset.UtcNow, items);
-
-    public void Process()
+    public static Order Create(IEnumerable<OrderItem>? items)
     {
-        EnsureStatus(OrderStatus.Pending, "INVALID_ORDER_STATE", "Only pending orders can be processed.");
-        TransitionTo(OrderStatus.Processing);
+        if (items is null)
+        {
+            throw new DomainException("ORDER_EMPTY", "An order must contain at least one item.");
+        }
+
+        var materialized = new List<OrderItem>();
+        foreach (var item in items)
+        {
+            if (item is null)
+            {
+                throw new DomainException("ORDER_ITEM_NULL", "An order item must not be null.");
+            }
+
+            materialized.Add(item);
+        }
+
+        return new Order(Guid.NewGuid(), DateTimeOffset.UtcNow, materialized);
     }
 
-    public void Ship()
+    public void Process() =>
+        Transition(OrderStatus.Processing, "INVALID_ORDER_STATE", "Only pending orders can be processed.");
+
+    public void Ship() =>
+        Transition(OrderStatus.Shipped, "INVALID_ORDER_STATE", "Only processing orders can be shipped.");
+
+    public void Deliver() =>
+        Transition(OrderStatus.Delivered, "INVALID_ORDER_STATE", "Only shipped orders can be delivered.");
+
+    public void Cancel() =>
+        Transition(OrderStatus.Cancelled, "ORDER_NOT_CANCELLABLE", "Only pending orders can be cancelled.");
+
+    public static bool IsLegal(OrderStatus from, OrderStatus to) => (from, to) switch
     {
-        EnsureStatus(OrderStatus.Processing, "INVALID_ORDER_STATE", "Only processing orders can be shipped.");
-        TransitionTo(OrderStatus.Shipped);
+        (OrderStatus.Pending, OrderStatus.Processing) => true,
+        (OrderStatus.Pending, OrderStatus.Cancelled) => true,
+        (OrderStatus.Processing, OrderStatus.Shipped) => true,
+        (OrderStatus.Shipped, OrderStatus.Delivered) => true,
+        _ => false
+    };
+
+    private static decimal ComputeTotal(IReadOnlyList<OrderItem> items)
+    {
+        var total = 0m;
+        foreach (var item in items)
+        {
+            total = Money.AddChecked(total, item.LineTotal);
+        }
+
+        return total;
     }
 
-    public void Deliver()
+    private void Transition(OrderStatus next, string code, string message)
     {
-        EnsureStatus(OrderStatus.Shipped, "INVALID_ORDER_STATE", "Only shipped orders can be delivered.");
-        TransitionTo(OrderStatus.Delivered);
-    }
-
-    public void Cancel()
-    {
-        EnsureStatus(OrderStatus.Pending, "ORDER_NOT_CANCELLABLE", "Only pending orders can be cancelled.");
-        TransitionTo(OrderStatus.Cancelled);
-    }
-
-    private void EnsureStatus(OrderStatus expected, string code, string message)
-    {
-        if (Status != expected)
+        if (!IsLegal(Status, next))
         {
             throw new DomainException(code, message);
         }
-    }
 
-    private void TransitionTo(OrderStatus next)
-    {
         Status = next;
         UpdatedAt = DateTimeOffset.UtcNow;
         Version++;

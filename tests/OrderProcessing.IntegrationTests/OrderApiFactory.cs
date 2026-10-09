@@ -4,7 +4,7 @@ using Testcontainers.PostgreSql;
 
 namespace OrderProcessing.IntegrationTests;
 
-public sealed class OrderApiFactory : WebApplicationFactory<Program>
+public class OrderApiFactory : WebApplicationFactory<Program>
 {
     private readonly PostgreSqlContainer _container;
 
@@ -19,6 +19,11 @@ public sealed class OrderApiFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("ConnectionStrings:Default", _container.GetConnectionString());
+        ConfigureSettings(builder);
+    }
+
+    protected virtual void ConfigureSettings(IWebHostBuilder builder)
+    {
     }
 
     protected override void Dispose(bool disposing)

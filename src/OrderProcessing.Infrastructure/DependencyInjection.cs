@@ -23,8 +23,10 @@ public static class DependencyInjection
         var connectionString = configuration.GetConnectionString("Default")
             ?? throw new InvalidOperationException("Connection string 'Default' is not configured.");
 
-        services.Configure<OrderProcessingOptions>(
-            configuration.GetSection(OrderProcessingOptions.SectionName));
+        services.AddOptions<OrderProcessingOptions>()
+            .Bind(configuration.GetSection(OrderProcessingOptions.SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<OrderProcessingOptions>, OrderProcessingOptionsValidator>();
 
         services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 

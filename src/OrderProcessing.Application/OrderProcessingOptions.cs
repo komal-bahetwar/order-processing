@@ -7,4 +7,6 @@ public sealed class OrderProcessingOptions
     public string CronExpression { get; set; } = "*/5 * * * *";
 
     public int BatchSize { get; set; } = 200;
+
+    public int MaxOrdersPerRun { get; set; } = 5000;
 }

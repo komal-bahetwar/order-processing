@@ -48,7 +48,7 @@ public sealed class OrderService : IOrderService
         OrderStatus? filter = null;
         if (!string.IsNullOrWhiteSpace(status))
         {
-            if (!Enum.TryParse<OrderStatus>(status, ignoreCase: true, out var parsed))
+            if (!OrderStatusNames.TryParse(status, out var parsed))
             {
                 throw new DomainException("VALIDATION_ERROR", $"'{status}' is not a known order status.");
             }
@@ -65,7 +65,7 @@ public sealed class OrderService : IOrderService
 
     public async Task<OrderDto> UpdateStatusAsync(Guid id, string status, CancellationToken cancellationToken = default)
     {
-        if (!Enum.TryParse<OrderStatus>(status, ignoreCase: true, out var target))
+        if (!OrderStatusNames.TryParse(status, out var target))
         {
             throw new DomainException("VALIDATION_ERROR", $"'{status}' is not a known order status.");
         }

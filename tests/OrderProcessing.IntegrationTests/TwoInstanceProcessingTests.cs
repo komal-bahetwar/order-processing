@@ -18,13 +18,17 @@ public class TwoInstanceProcessingTests : IClassFixture<OrderApiFactory>
     }
 
     [Fact]
-    public async Task Two_instances_move_a_pending_order_exactly_once()
+    public async Task Two_instances_move_a_backlog_exactly_once()
     {
-        var response = await _client.PostAsJsonAsync(
-            "/api/orders",
-            new CreateOrderRequest([new CreateOrderItemRequest(Guid.NewGuid(), 1, 10m)]));
-        response.EnsureSuccessStatusCode();
-        var order = (await response.Content.ReadFromJsonAsync<OrderDto>())!;
+        var ids = new List<Guid>();
+        for (var i = 0; i < 3; i++)
+        {
+            var created = await _client.PostAsJsonAsync(
+                "/api/orders",
+                new CreateOrderRequest([new CreateOrderItemRequest(Guid.NewGuid(), 1, 10m)]));
+            created.EnsureSuccessStatusCode();
+            ids.Add((await created.Content.ReadFromJsonAsync<OrderDto>())!.Id);
+        }
 
         using var firstScope = _factory.Services.CreateScope();
         using var secondScope = _factory.Services.CreateScope();
@@ -36,9 +40,13 @@ public class TwoInstanceProcessingTests : IClassFixture<OrderApiFactory>
             first.ProcessPendingOrdersAsync(),
             second.ProcessPendingOrdersAsync());
 
-        results.Sum().Should().Be(1);
+        // Races are resolved by the version token, so each order moves exactly once.
+        results.Sum().Should().Be(3);
 
-        var moved = await _client.GetFromJsonAsync<OrderDto>($"/api/orders/{order.Id}");
-        moved!.Status.Should().Be("PROCESSING");
+        foreach (var id in ids)
+        {
+            var order = await _client.GetFromJsonAsync<OrderDto>($"/api/orders/{id}");
+            order!.Status.Should().Be("PROCESSING");
+        }
     }
 }
