@@ -106,6 +106,29 @@ http://localhost:8080/hangfire
 
 It lists the recurring job, its schedule, and the history of runs, which is the place to look when a run fails. The dashboard is not authenticated, so it is mapped only in Development and is not part of the public API contract.
 
+## Structured logs (Seq)
+
+The API writes structured JSON logs to the console, and optionally to Seq, a log
+UI for searching them.
+
+`docker compose up --build` includes a `seq` service. Open:
+
+```text
+http://localhost:5341
+```
+
+First-run sign-in uses username `admin` and the password from `SEQ_ADMIN_PASSWORD`
+(the compose default is a local placeholder; set your own). Configure it with:
+
+- `SEQ_PORT` — the host UI port, default `5341`, bound to loopback.
+- `SEQ_ADMIN_PASSWORD` — the first-run admin password.
+
+The API reaches Seq at `http://seq:80` inside compose. A host-run API uses
+`Seq__Url=http://localhost:5341` (and an optional `Seq__ApiKey`). Sequence
+logging is optional: the console sink always works, and a Seq outage does not
+affect request handling or readiness. Search events by the structured properties
+(SourceContext, level, and the correlation identifiers).
+
 ## Project layout
 
 ```text

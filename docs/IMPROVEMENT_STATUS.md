@@ -25,7 +25,7 @@ Last updated: 2026-10-10. Test suite at this point: 106 tests, all passing
 | IMP-09 | P2 | Implemented | This document plus the AI-use log | `docs/AI_USAGE.md` |
 | IMP-10 | P2 | Not started (Wave 3) | Requires an `Idempotency-Key` contract, a new table, and new error codes | n/a |
 | IMP-11 | P2 | Not started (Wave 3) | Requires the correlation-header identifier model | n/a |
-| IMP-12 | P2 | Not started (Wave 3) | Requires adding Seq as local infrastructure | n/a |
+| IMP-12 | P2 | Implemented (Wave 3) | Optional Seq sink in `src/OrderProcessing.Api/Program.cs`; `seq` service in `docker-compose.yml`; README walkthrough | Verified: Seq UI 200 and the API serves with the sink configured; the query smoke is manual (sign in) |
 | IMP-13 | P1 | Implemented | `OrderProcessingOptionsValidator`, `ValidateOnStart`, the budgeted drain in `OrderProcessingService`, fail-fast registration in `Program.cs`, `[AutomaticRetry]` on the job | `OptionsValidationTests`; `BacklogDrainTests`; `TwoInstanceProcessingTests` |
 | IMP-14 | P1 | Not started (Wave 3) | Requires a cursor contract extension | n/a |
 

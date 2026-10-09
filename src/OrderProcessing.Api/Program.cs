@@ -20,10 +20,21 @@ using Serilog.Formatting.Compact;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Host.UseSerilog((context, services, configuration) => configuration
-    .ReadFrom.Configuration(context.Configuration)
-    .Enrich.FromLogContext()
-    .WriteTo.Console(new CompactJsonFormatter()));
+builder.Host.UseSerilog((context, services, configuration) =>
+{
+    configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .Enrich.FromLogContext()
+        .WriteTo.Console(new CompactJsonFormatter());
+
+    // Seq is an optional secondary sink: enabled only when a URL is configured.
+    // It never gates readiness or request handling, and console logging always stays on.
+    var seqUrl = context.Configuration["Seq:Url"];
+    if (!string.IsNullOrWhiteSpace(seqUrl))
+    {
+        configuration.WriteTo.Seq(seqUrl, apiKey: context.Configuration["Seq:ApiKey"]);
+    }
+});
 
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHangfireServer();

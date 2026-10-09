@@ -3,13 +3,13 @@
 artifact_id: ADR-0010
 artifact_type: adr
 title: "Centralize build and package policy, and inject time into the domain"
-status: draft
+status: approved
 stage: S3
 work_item: TKT-0001
 author: { kind: agent, name: "sdlc-writer", model: "deepseek/deepseek-flash" }
 reviewers:
   - { kind: agent, name: "sdlc-reviewer", model: "deepseek/deepseek-v4-pro", rounds: 1, verdict: approved }
-approver: { kind: human, name: "<...>", role: "Architect", date: <YYYY-MM-DD> }
+approver: { kind: human, name: "Komal Bahetwar", role: "Architect", date: 2026-10-10 }
 gate: G3
 sources: [PRD-0001, NFR-0001, ADR-0001, ADR-0009]
 jurisdiction: []

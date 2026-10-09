@@ -23,11 +23,26 @@ services:
       ASPNETCORE_URLS: http://+:8080
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Default: Host=postgres;Port=5432;Database=orderprocessing;Username=postgres;Password=postgres
+      Seq__Url: http://seq:80
     ports:
       - "${API_PORT:-8080}:8080"
     depends_on:
       postgres:
         condition: service_healthy
 
+  # Optional structured-log UI. The API does not depend on it: console logging always
+  # works and a Seq outage does not affect request handling or readiness.
+  seq:
+    image: datalust/seq:2025.1
+    environment:
+      ACCEPT_EULA: "Y"
+      SEQ_FIRST_RUN_ADMIN_USERNAME: admin
+      SEQ_FIRST_RUN_ADMIN_PASSWORD: ${SEQ_ADMIN_PASSWORD:-ChangeMe123!}
+    ports:
+      - "127.0.0.1:${SEQ_PORT:-5341}:80"
+    volumes:
+      - order-seq-data:/data
+
 volumes:
   order-postgres-data:
+  order-seq-data:
