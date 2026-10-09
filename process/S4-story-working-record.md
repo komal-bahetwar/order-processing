@@ -58,5 +58,5 @@ The independent code review ran two rounds. Round 1 requested changes (one
 blocker and four majors); round 2 approved after the fixes. Recorded in
 `process/S4-review-register.md`.
 
-`dotnet test` passes: 19 unit tests and 21 integration tests against a real
-PostgreSQL container. The build is clean with no warnings.
+`dotnet test` passes: 19 unit tests, 5 architecture tests, and 21 integration
+tests against a real PostgreSQL container. The build is clean with no warnings.

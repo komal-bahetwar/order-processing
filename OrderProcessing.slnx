@@ -6,6 +6,7 @@
     <Project Path="src/OrderProcessing.Infrastructure/OrderProcessing.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/OrderProcessing.ArchitectureTests/OrderProcessing.ArchitectureTests.csproj" />
     <Project Path="tests/OrderProcessing.IntegrationTests/OrderProcessing.IntegrationTests.csproj" />
     <Project Path="tests/OrderProcessing.UnitTests/OrderProcessing.UnitTests.csproj" />
   </Folder>

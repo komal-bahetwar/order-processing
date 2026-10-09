@@ -18,7 +18,7 @@ Verdict: CHANGES REQUESTED.
 | 7 | minor | The foreign key name does not follow the SQL naming convention. | open (debt) |
 | 8 | minor | Hardcoded development database credentials in source. | accepted for local dev; must come from the environment in a real deployment |
 | 9 | minor | Order items are not ordered on read, so read-back order is not guaranteed though the contract documents submitted order. | accepted (debt): adding a position column is a schema change deferred to a later phase |
-| 10 | minor | No `.editorconfig`, `TreatWarningsAsErrors`, or architecture test to hold the dependency direction mechanically. | accepted (debt) |
+| 10 | minor | No `.editorconfig`, `TreatWarningsAsErrors`, or architecture test to hold the dependency direction mechanically. | closed: a `OrderProcessing.ArchitectureTests` project now enforces the dependency direction and EF confinement (5 tests), and an `.editorconfig` is added. `TreatWarningsAsErrors` is deferred because the sandbox blocks the user NuGet config on an implicit restore; the build is warning-free by convention. |
 
 Passed: layering and dependency direction, domain invariants, the concurrency
 token and its translation, persistence matching the data model, parameterized
@@ -37,3 +37,13 @@ regressions were found. Build clean, 19 unit and 21 integration tests pass.
 | 4 | minor | The observability and health assertions are not automated (log line, counter, correlation id, 200 ms health). | accepted (debt): the implementation is present; the assertions land with the S5 test plan |
 
 Round 1 minors 7, 9, and 10 remain recorded as accepted debt.
+
+## Human review at G4
+
+The human asked whether clean architecture is enforced rather than assumed. In
+response, a `OrderProcessing.ArchitectureTests` project was added. It asserts
+that the domain depends on no other layer and no ORM, that the application layer
+does not depend on infrastructure, the api, or the ORM, that infrastructure does
+not depend on the api, that controllers do not reach into persistence, and that
+the application abstractions are implemented in infrastructure. All five pass,
+so the one-way dependency direction is proved mechanically rather than promised.

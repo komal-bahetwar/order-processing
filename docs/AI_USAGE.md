@@ -195,8 +195,10 @@ tell process-agent use apart from ad hoc assistant use.
   and a correlation id on log lines; and added the missing tests. Round two was
   approved.
 - **Human decisions**: chose to fix the blocker and majors before the gate and
-  to record the remaining minor findings as debt. The build and 40 tests are
-  green.
+  to record the remaining minor findings as debt. At the gate the human also
+  asked whether clean architecture was enforced or merely assumed, so an
+  architecture test project was added that proves the dependency direction and
+  the ORM confinement (5 tests). The build and 45 tests are green.
 
 ## Human corrections to AI output
 
