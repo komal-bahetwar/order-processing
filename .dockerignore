@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+.dotnet/
+.nuget/
+.git/
+.gitignore
+.DS_Store
+**/*.user
+docs/
+agentic-sdlc/
