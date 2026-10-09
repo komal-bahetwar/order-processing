@@ -1,0 +1,3 @@
+[submodule "agentic-sdlc"]
+	path = agentic-sdlc
+	url = git@github.com:komal-bahetwar/agentic-sdlc.git

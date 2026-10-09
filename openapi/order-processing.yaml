@@ -1,0 +1,534 @@
+openapi: 3.1.0
+info:
+  title: Order Processing API
+  version: 1.0.0
+  description: |
+    Programmatic interface for the order processing service. It lets a caller
+    create an order with one or more items, retrieve an order by id, list and
+    filter orders by status, advance an order through the manual lifecycle
+    steps, and cancel a pending order. Orders begin in PENDING and a background
+    process moves PENDING orders to PROCESSING automatically.
+
+    Every failure returns the shared ErrorResponse shape with a stable code and
+    a meaningful status. Status values are strings.
+
+    The list result is bounded: at most 20 items by default. A request for more
+    than 100 succeeds and returns at most 100, ordered oldest first by creation
+    time.
+  contact:
+    name: Order Processing team
+servers:
+  - url: http://localhost:8080
+    description: Local docker compose environment
+tags:
+  - name: Orders
+    description: Order capture and lifecycle operations
+paths:
+  /api/orders:
+    post:
+      operationId: createOrder
+      summary: Create an order
+      description: |
+        Captures an order with one or more items. The total is derived from the
+        items and is never supplied by the caller. A request with no items, a
+        quantity of zero or less, or a negative unit price is rejected and no
+        order is captured.
+      tags: [Orders]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+            examples:
+              twoItems:
+                summary: An order with two items
+                value:
+                  items:
+                    - productId: '5e1c9f2a-1b3c-4d5e-8f70-9a1b2c3d4e5f'
+                      quantity: 2
+                      unitPrice: 100.00
+                    - productId: '9ab34d5e-6f70-4a1b-8c2d-3e4f5a6b7c8d'
+                      quantity: 1
+                      unitPrice: 250.00
+      responses:
+        '201':
+          description: The order was captured and starts in PENDING.
+          headers:
+            Location:
+              description: The URL of the created order.
+              schema:
+                type: string
+                format: uri-reference
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+              examples:
+                created:
+                  summary: The created order
+                  value:
+                    id: '3f2b8c1e-9a4d-4f6b-8c2e-1d5a7b9c0e3f'
+                    status: PENDING
+                    totalAmount: 450.00
+                    createdAt: '2026-10-09T10:00:00Z'
+                    updatedAt: null
+                    items:
+                      - productId: '5e1c9f2a-1b3c-4d5e-8f70-9a1b2c3d4e5f'
+                        quantity: 2
+                        unitPrice: 100.00
+                        lineTotal: 200.00
+                      - productId: '9ab34d5e-6f70-4a1b-8c2d-3e4f5a6b7c8d'
+                        quantity: 1
+                        unitPrice: 250.00
+                        lineTotal: 250.00
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      operationId: listOrders
+      summary: List orders with an optional status filter
+      description: |
+        Returns orders oldest first by creation time, ties broken by id, so
+        repeated requests over unchanged data return the same sequence. The
+        result is bounded to 20 by default and capped at 100: a request for more
+        than 100 succeeds and returns at most 100. A filter that matches nothing
+        returns an empty list.
+      tags: [Orders]
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Return only orders that hold this status.
+          schema:
+            $ref: '#/components/schemas/OrderStatus'
+        - name: limit
+          in: query
+          required: false
+          description: |
+            The greatest number of orders to return. The default is 20. A
+            request for more than 100 succeeds and returns at most 100 results,
+            so an over-maximum value is clamped rather than rejected.
+          schema:
+            type: integer
+            minimum: 1
+            default: 20
+      responses:
+        '200':
+          description: The matching orders, possibly empty.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+              examples:
+                page:
+                  summary: One PENDING order
+                  value:
+                    - id: '3f2b8c1e-9a4d-4f6b-8c2e-1d5a7b9c0e3f'
+                      status: PENDING
+                      totalAmount: 450.00
+                      createdAt: '2026-10-09T10:00:00Z'
+                      updatedAt: null
+                      items:
+                        - productId: '5e1c9f2a-1b3c-4d5e-8f70-9a1b2c3d4e5f'
+                          quantity: 2
+                          unitPrice: 100.00
+                          lineTotal: 200.00
+                        - productId: '9ab34d5e-6f70-4a1b-8c2d-3e4f5a6b7c8d'
+                          quantity: 1
+                          unitPrice: 250.00
+                          lineTotal: 250.00
+                empty:
+                  summary: No order matches the filter
+                  value: []
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/orders/{id}:
+    get:
+      operationId: getOrder
+      summary: Retrieve an order by id
+      description: |
+        Returns the order, its items, its total, and its current status. An id
+        that is not known returns 404. Retrieval never changes the order.
+      tags: [Orders]
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      responses:
+        '200':
+          description: The requested order.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+              examples:
+                found:
+                  summary: A shipped order
+                  value:
+                    id: '3f2b8c1e-9a4d-4f6b-8c2e-1d5a7b9c0e3f'
+                    status: SHIPPED
+                    totalAmount: 450.00
+                    createdAt: '2026-10-09T10:00:00Z'
+                    updatedAt: '2026-10-09T10:15:00Z'
+                    items:
+                      - productId: '5e1c9f2a-1b3c-4d5e-8f70-9a1b2c3d4e5f'
+                        quantity: 2
+                        unitPrice: 100.00
+                        lineTotal: 200.00
+                      - productId: '9ab34d5e-6f70-4a1b-8c2d-3e4f5a6b7c8d'
+                        quantity: 1
+                        unitPrice: 250.00
+                        lineTotal: 250.00
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/orders/{id}/status:
+    patch:
+      operationId: updateOrderStatus
+      summary: Advance an order through the manual lifecycle steps
+      description: |
+        Applies a manual status change. The accepted changes are PROCESSING to
+        SHIPPED and SHIPPED to DELIVERED. A request that sets the status the
+        order already holds is accepted as a no-op and returns the order
+        unchanged. Any other change is rejected with 409 and the order keeps its
+        status. Cancellation is a separate operation.
+      tags: [Orders]
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateStatusRequest'
+            examples:
+              ship:
+                summary: Move a processing order to shipped
+                value:
+                  status: SHIPPED
+      responses:
+        '200':
+          description: The order after the change, or unchanged for a no-op.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+              examples:
+                shipped:
+                  summary: The updated order
+                  value:
+                    id: '3f2b8c1e-9a4d-4f6b-8c2e-1d5a7b9c0e3f'
+                    status: SHIPPED
+                    totalAmount: 450.00
+                    createdAt: '2026-10-09T10:00:00Z'
+                    updatedAt: '2026-10-09T10:15:00Z'
+                    items:
+                      - productId: '5e1c9f2a-1b3c-4d5e-8f70-9a1b2c3d4e5f'
+                        quantity: 2
+                        unitPrice: 100.00
+                        lineTotal: 200.00
+                      - productId: '9ab34d5e-6f70-4a1b-8c2d-3e4f5a6b7c8d'
+                        quantity: 1
+                        unitPrice: 250.00
+                        lineTotal: 250.00
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/orders/{id}/cancel:
+    post:
+      operationId: cancelOrder
+      summary: Cancel a pending order
+      description: |
+        Cancels the whole order while it is PENDING, moving it to CANCELLED. A
+        cancel request on an order in any other status is rejected with 409 and
+        the order keeps its status. Partial cancellation is not supported.
+      tags: [Orders]
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      responses:
+        '200':
+          description: The cancelled order.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+              examples:
+                cancelled:
+                  summary: A cancelled order
+                  value:
+                    id: '3f2b8c1e-9a4d-4f6b-8c2e-1d5a7b9c0e3f'
+                    status: CANCELLED
+                    totalAmount: 450.00
+                    createdAt: '2026-10-09T10:00:00Z'
+                    updatedAt: '2026-10-09T10:02:00Z'
+                    items:
+                      - productId: '5e1c9f2a-1b3c-4d5e-8f70-9a1b2c3d4e5f'
+                        quantity: 2
+                        unitPrice: 100.00
+                        lineTotal: 200.00
+                      - productId: '9ab34d5e-6f70-4a1b-8c2d-3e4f5a6b7c8d'
+                        quantity: 1
+                        unitPrice: 250.00
+                        lineTotal: 250.00
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+components:
+  parameters:
+    OrderId:
+      name: id
+      in: path
+      required: true
+      description: The unique identifier of the order.
+      schema:
+        type: string
+        format: uuid
+  responses:
+    BadRequest:
+      description: |
+        The request was malformed or failed validation. The response carries a
+        stable code such as VALIDATION_ERROR or INVALID_ID.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            validation:
+              summary: An order with no items
+              value:
+                type: 'https://example.com/problems/validation-error'
+                title: Validation failed
+                status: 400
+                code: VALIDATION_ERROR
+                detail: 'items must contain at least one item.'
+                traceId: '0af7651916cd43dd8448eb211c80319c'
+    NotFound:
+      description: No order holds the requested id. The code is ORDER_NOT_FOUND.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            notFound:
+              summary: An unknown order id
+              value:
+                type: 'https://example.com/problems/order-not-found'
+                title: Order not found
+                status: 404
+                code: ORDER_NOT_FOUND
+                detail: 'No order holds the requested id.'
+                traceId: '0af7651916cd43dd8448eb211c80319c'
+    Conflict:
+      description: |
+        The change cannot be applied because the order is in the wrong state,
+        the cancel is not allowed, or another writer changed the order first.
+        The code is one of INVALID_ORDER_STATE, ORDER_NOT_CANCELLABLE, or
+        CONCURRENCY_CONFLICT.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            invalidState:
+              summary: An illegal transition
+              value:
+                type: 'https://example.com/problems/invalid-order-state'
+                title: Invalid order state
+                status: 409
+                code: INVALID_ORDER_STATE
+                detail: 'Only processing orders can be shipped.'
+                traceId: '0af7651916cd43dd8448eb211c80319c'
+            notCancellable:
+              summary: A cancel on a non-pending order
+              value:
+                type: 'https://example.com/problems/order-not-cancellable'
+                title: Order not cancellable
+                status: 409
+                code: ORDER_NOT_CANCELLABLE
+                detail: 'Only pending orders can be cancelled.'
+                traceId: '0af7651916cd43dd8448eb211c80319c'
+            concurrency:
+              summary: Another change won the race
+              value:
+                type: 'https://example.com/problems/concurrency-conflict'
+                title: Concurrency conflict
+                status: 409
+                code: CONCURRENCY_CONFLICT
+                detail: 'The order was changed by another request. Read it again and retry.'
+                traceId: '0af7651916cd43dd8448eb211c80319c'
+    InternalServerError:
+      description: An unexpected failure. The code is INTERNAL_ERROR.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            internal:
+              summary: An unexpected failure
+              value:
+                type: 'https://example.com/problems/internal-error'
+                title: Internal error
+                status: 500
+                code: INTERNAL_ERROR
+                detail: 'The request could not be completed.'
+                traceId: '0af7651916cd43dd8448eb211c80319c'
+  schemas:
+    OrderStatus:
+      type: string
+      description: |
+        The lifecycle status of an order. A new order starts in PENDING.
+        DELIVERED and CANCELLED are terminal. A position in the lifecycle, not
+        a request to change state.
+      enum:
+        - PENDING
+        - PROCESSING
+        - SHIPPED
+        - DELIVERED
+        - CANCELLED
+    CreateOrderRequest:
+      type: object
+      description: A request to capture an order.
+      required: [items]
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          description: The order lines. At least one is required.
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/OrderItemInput'
+    OrderItemInput:
+      type: object
+      description: One requested order line.
+      required: [productId, quantity, unitPrice]
+      additionalProperties: false
+      properties:
+        productId:
+          type: string
+          format: uuid
+          description: The product identity. No catalogue lookup is performed.
+        quantity:
+          type: integer
+          minimum: 1
+          description: The quantity, which must be greater than zero.
+        unitPrice:
+          type: number
+          minimum: 0
+          description: |
+            The unit price agreed at order time. It is accepted at up to two
+            decimal places, and any extra precision is rounded half-up to two
+            decimals.
+    UpdateStatusRequest:
+      type: object
+      description: A request to set an order to a status.
+      required: [status]
+      additionalProperties: false
+      properties:
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+    Order:
+      type: object
+      description: A captured order and its items.
+      required: [id, status, totalAmount, createdAt, items]
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The order identity.
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+        totalAmount:
+          type: number
+          description: |
+            The order total, computed from the rounded line totals: the sum over
+            items of the two-decimal line amount. It is derived from the items
+            and is never supplied by the caller.
+        createdAt:
+          type: string
+          format: date-time
+          description: When the order was created, in UTC.
+        updatedAt:
+          type: [string, 'null']
+          format: date-time
+          description: When the order last changed status, in UTC, or null before the first change.
+        items:
+          type: array
+          description: The order lines, in submitted order.
+          items:
+            $ref: '#/components/schemas/OrderItem'
+    OrderItem:
+      type: object
+      description: One captured order line.
+      required: [productId, quantity, unitPrice, lineTotal]
+      additionalProperties: false
+      properties:
+        productId:
+          type: string
+          format: uuid
+          description: The product identity.
+        quantity:
+          type: integer
+          description: The captured quantity.
+        unitPrice:
+          type: number
+          description: |
+            The unit price agreed at order time, accepted at up to two decimal
+            places and rounded half-up to two decimals.
+        lineTotal:
+          type: number
+          description: |
+            The line total, computed as quantity times the rounded unit price and
+            itself rounded half-up to two decimals.
+    ErrorResponse:
+      type: object
+      description: |
+        The single error shape returned for every failure. The code is stable
+        and machine-readable; the detail is human-readable and may change.
+      required: [type, title, status, code, detail, traceId]
+      additionalProperties: false
+      properties:
+        type:
+          type: string
+          format: uri
+          description: A URI that identifies the problem type.
+        title:
+          type: string
+          description: A short, human-readable summary of the problem.
+        status:
+          type: integer
+          description: The HTTP status code, repeated in the body.
+        code:
+          type: string
+          description: The stable machine-readable error code.
+          enum:
+            - VALIDATION_ERROR
+            - INVALID_ID
+            - ORDER_NOT_FOUND
+            - INVALID_ORDER_STATE
+            - ORDER_NOT_CANCELLABLE
+            - CONCURRENCY_CONFLICT
+            - INTERNAL_ERROR
+        detail:
+          type: string
+          description: A human-readable explanation of this occurrence.
+        traceId:
+          type: string
+          description: The correlation identifier that ties the request to the change it caused.
