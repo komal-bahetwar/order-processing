@@ -200,20 +200,86 @@ tell process-agent use apart from ad hoc assistant use.
   architecture test project was added that proves the dependency direction and
   the ORM confinement (5 tests). The build and 45 tests are green.
 
-## Human corrections to AI output
+### S5, Verification and Quality
+
+- **Prompt**: the runbook S5 stage prompt, grounded in the actual test run.
+- **What the AI produced**: `TP-0002` (test plan), `DOC-0005` (test report),
+  `DOC-0006` (security evidence), and `DOC-0007` (UAT sign-off draft).
+- **Issues found**: the reviewer blocked round 1 on two majors. The test plan
+  claimed the observability story and budget were covered by integration tests
+  when no test actually asserts them, and the test report declared green while
+  four performance and availability budgets were unmeasured and no waiver
+  existed. Five minors followed, including a wrong approver role on the security
+  evidence and a defect-attribution error.
+- **How we corrected it**: reconciled the observability coverage to
+  "implemented, assertions owed", reframed the gate status as green for the
+  automated functional and architecture evidence with a pending waiver for the
+  four unmeasured budgets, added the owed assertion to the debt list, fixed the
+  defect attribution, changed the security approver to the Security Lead, added
+  the missing source, and aligned the UAT statuses with the evidence. Round two
+  was approved.
+- **Human decisions**: the UAT signature, the waiver for the performance and
+  availability budgets, and the G5 decision are the human's to record.
+
+### S6, Release and Deployment
+
+- **Prompt**: the runbook S6 stage prompt, with deployment scoped to local
+  Docker Compose.
+- **What the AI produced**: `DOC-0008` (change record), `DOC-0009` (deployment
+  manifest), `DOC-0010` (rollback plan), and `DOC-0011` (release notes).
+- **Issues found**: the deployment check itself surfaced two packaging
+  problems. The `postgres:18-alpine` image rejects the old data directory mount
+  and failed to start until the volume moved to `/var/lib/postgresql`, and the
+  ASP.NET runtime image lacked `libgssapi_krb5`, which produced a startup error.
+  The reviewer found four minors: a mis-cited no-threat-model decision, a
+  missing client-communications element, incomplete traceability sources, and a
+  rollback plan that did not name who exercised it.
+- **How we corrected it**: moved the volume, added the native library to the
+  runtime image, and re-verified the full stack (`docker compose up --build`
+  brought both containers up, the API answered readiness with 200, a created
+  order returned a total of 450, and the list endpoint returned it). Fixed the
+  four minors.
+- **Human decisions**: the G6 approval is the human's to record. The
+  deployment scope is stated plainly as the local Compose environment.
+
+### S7 and S8, Operate and Review
+
+- **Prompt**: the runbook S7 continuous prompt and the S8 stage prompt.
+- **What the AI produced**: `DOC-0012` (SLO/SLI definitions), `DOC-0013`
+  (alert rules), `DOC-0014` (operational runbooks), and `DOC-0015` (post-launch
+  review), `DOC-0016` (telemetry report), `DOC-0017` (debt register delta).
+- **Issues found**: the reviewer approved with two minors: the availability
+  window was stated two ways and the error budget did not match it, and two
+  alert rules pointed at runbooks that did not cover their diagnosis path.
+- **How we corrected it**: unified the window to the calendar month and fixed
+  the error-budget figure, added a high-latency runbook, and repointed the
+  rules. The review itself is honest that there is no production traffic, so
+  the post-launch review scores the brief success criteria against the 45-test
+  run and the local deployment, not adoption.
+- **Human decisions**: the joint PM and EM decision at G7 is the human's.
+
+## Human corrections and directions to AI output
 
 The assignment asks what the AI got wrong and how we corrected it. These are the
-changes a human made after reviewing the agent's output, separate from the
-reviewer findings above. Each one is a judgement the model did not make on its
-own.
+changes and additions a human made after reviewing the agent's output, separate
+from the reviewer findings above. Each one is a judgement the model did not make
+on its own. The table covers the corrections (things the model got wrong) and
+the directions (things the human asked for that the model had not produced),
+because the assignment grades both.
 
-| Where | What the AI proposed | What the human changed it to, and why |
+| Where | What the AI produced | What the human changed or asked for, and why |
 |---|---|---|
-| S3, ADR-0002 | An implicit PostgreSQL row-version token (`xmin`) as the optimistic concurrency token. | An explicit `version` column, incremented on each write. `xmin` is a PostgreSQL system column with no portable equivalent, so it would pin the system to one database. The version column gives the same lost-update protection and works on any relational database. The rejected option and its portability cost are recorded in ADR-0002, and the data model, sequences, tests, and design context were updated to match. |
-| S0, brief FR-6 | A "scheduled process" and a "fixed cadence" as the requirement wording. | An outcome ("a pending order reaches processing within about 5 minutes, no manual step"), because naming a mechanism in an S0 artifact is a consequence-free way to smuggle a solution into the problem statement. |
+| S0, brief FR-6 | "A scheduled process" and "a fixed cadence" as the requirement wording. | An outcome ("a pending order reaches processing within about 5 minutes, no manual step"), because naming a mechanism in an S0 artifact is a consequence-free way to smuggle a solution into the problem statement. |
 | S1, PRD/NFR | "The API" and "page size" as delivery concepts. | Mechanism-free phrasing ("the programmatic interface", "at most 20 results by default and at most 100 on request"), so the requirements state outcomes and leave the how to design. |
 | S2, design context | The design context exposed PENDING to PROCESSING as a manual admin transition. | Automatic only, with the admin override deferred. The approved story defines the manual changes as PROCESSING to SHIPPED and SHIPPED to DELIVERED, so the design was aligned to the story and the divergence recorded. |
-| S2 delta, scope | The baseline did not cover every non-functional requirement in the design context. | A human noticed the gaps and directed a delta to close them (scalability, interface quality, operability) and to record deferred extensions, including item-level order status, in `docs/FUTURE_PHASES.md`. |
+| S2 delta, scope and scalability | The baseline covered only some non-functional requirements: it missed the design context's horizontal scalability, interface quality, and operability needs, and left item-level order status and other extensions unaddressed. | A human noticed the gaps and directed a delta that added horizontal scalability, interface contract and error model, and operability to `NFR-0001`, with stories `S09` to `S11`, and recorded every deferred functional and non-functional extension, including item-level order status, in `docs/FUTURE_PHASES.md`. |
+| S3, concurrency token | An implicit PostgreSQL row-version token (`xmin`) as the optimistic concurrency token. | An explicit `version` column, incremented on each write. `xmin` is a PostgreSQL system column with no portable equivalent, so it would pin the system to one database. The version column gives the same lost-update protection and works on any relational database. The rejected option and its portability cost are recorded in ADR-0002, and the data model, sequences, tests, and design context were updated to match. |
+| S3, overall architecture and style | A layered design that never stated the architecture style or gave a single end-to-end picture of the product. | A human asked for the architecture to be documented and named. The result is ADR-0008, which decides a modular monolith with clear module boundaries and defers microservices and a distributed event-driven split with explicit triggers, and an end-to-end architecture diagram in DOC-0001 that shows the modules, the data store, the scheduled path, and the future elements as dashed. |
+| S3, deployment and asynchronous evolution | No statement of how the service deploys or how asynchronous integration would evolve. | A human asked for the deployment strategy and the asynchronous posture to be documented. DOC-0004 now states the local Docker Compose deployment (the service and PostgreSQL 18 in one command, migrations on startup), the trigger-based evolution (containers and an orchestrator, a managed database, blue/green or rolling deploys, backups and disaster recovery, read replicas, multi-region), and the asynchronous path (no broker today; a future transactional outbox to a message bus or queue for domain events), with the deployment section of `docs/FUTURE_PHASES.md` carrying the same. |
+| S4, clean architecture enforcement | A layered solution whose dependency direction was held by convention only. | A human asked whether clean architecture was enforced or merely assumed. An architecture test project was added that proves the direction mechanically: the domain depends on no other layer and no ORM, the application depends on neither infrastructure nor the ORM, controllers do not reach into persistence, and the application abstractions are implemented in infrastructure. |
+| S6/G7, documentation | A project that ran but whose entry points were thin: the README linked only a couple of files, and there was no clear index to the artifacts. | A human asked whether local run, the AI usage log, and the README links were proper. The README gained a documentation index grouped by stage and a project-layout section, the port-override and connection-string details were added to the run instructions, and this AI usage log was confirmed current. |
+| S0, open questions | The brief left four unknowns open with owners and due points. | A human asked how open questions should be handled. The decision was that each is resolved at the stage that owns it (the product and scope ones in the S1 PRD, the technical budgets in the S1 NFR), while the S0 baseline only lists unknowns with owners and due dates, never resolving them early by assumption. |
+| All stages, the AI usage log itself | The AI usage log could have been reconstructed at the end of the build. | A human asked when to capture it and directed it be maintained continuously, one entry per stage, so the prompts and the review findings are the ones that actually happened rather than a tidy retrospective. |
 
 ## Keeping this current
 
