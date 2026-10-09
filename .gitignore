@@ -23,3 +23,5 @@ artifacts/
 scratch/
 
 /scratch
+# Test coverage output
+TestResults/
