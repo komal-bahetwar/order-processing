@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using OrderProcessing.Application.Idempotency;
 using OrderProcessing.Domain;
 
 namespace OrderProcessing.Infrastructure.Persistence;
@@ -10,6 +11,8 @@ public sealed class AppDbContext : DbContext
     }
 
     public DbSet<Order> Orders => Set<Order>();
+
+    public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -78,6 +81,30 @@ public sealed class AppDbContext : DbContext
             entity.Ignore(item => item.LineTotal);
 
             entity.HasIndex(item => item.OrderId).HasDatabaseName("ix_order_items_order_id");
+        });
+
+        modelBuilder.Entity<IdempotencyRecord>(entity =>
+        {
+            entity.ToTable("idempotency_records");
+
+            entity.HasKey(record => record.Id).HasName("pk_idempotency_records");
+
+            entity.Property(record => record.Id).HasColumnName("id");
+            entity.Property(record => record.Scope).HasColumnName("scope").HasMaxLength(64).IsRequired();
+            entity.Property(record => record.Key).HasColumnName("key").HasMaxLength(128).IsRequired();
+            entity.Property(record => record.RequestFingerprint).HasColumnName("request_fingerprint").HasMaxLength(128).IsRequired();
+            entity.Property(record => record.OrderId).HasColumnName("order_id").IsRequired();
+            entity.Property(record => record.ResponseBody).HasColumnName("response_body").IsRequired();
+            entity.Property(record => record.ContentType).HasColumnName("content_type").HasMaxLength(128).IsRequired();
+            entity.Property(record => record.StatusCode).HasColumnName("status_code").IsRequired();
+            entity.Property(record => record.Location).HasColumnName("location").HasMaxLength(256).IsRequired();
+            entity.Property(record => record.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
+            entity.Property(record => record.ExpiresAt).HasColumnName("expires_at").HasColumnType("timestamptz").IsRequired();
+
+            entity.HasIndex(record => new { record.Scope, record.Key })
+                .IsUnique()
+                .HasDatabaseName("ux_idempotency_records_scope_key");
+            entity.HasIndex(record => record.ExpiresAt).HasDatabaseName("ix_idempotency_records_expires_at");
         });
     }
 }

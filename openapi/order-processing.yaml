@@ -44,6 +44,7 @@ paths:
         order is captured.
       tags: [Orders]
       parameters:
+        - $ref: '#/components/parameters/IdempotencyKeyHeader'
         - $ref: '#/components/parameters/CorrelationIdHeader'
       requestBody:
         required: true
@@ -95,6 +96,8 @@ paths:
                         lineTotal: 250.00
         '400':
           $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '500':
           $ref: '#/components/responses/InternalServerError'
     get:
@@ -346,6 +349,20 @@ components:
         type: string
         maxLength: 64
         pattern: '^[A-Za-z0-9._-]+$'
+    IdempotencyKeyHeader:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: |
+        An optional key that makes order creation idempotent. A retry with the
+        same key and an equivalent request replays the original response; a
+        different request under the same key is rejected with 409. At most 128
+        characters from letters, digits, '.', '_', and '-'. Keys are case
+        sensitive and expire after the configured retention (default 24 hours).
+      schema:
+        type: string
+        maxLength: 128
+        pattern: '^[A-Za-z0-9._-]+$'
   responses:
     BadRequest:
       description: |
@@ -384,9 +401,10 @@ components:
     Conflict:
       description: |
         The change cannot be applied because the order is in the wrong state,
-        the cancel is not allowed, or another writer changed the order first.
-        The code is one of INVALID_ORDER_STATE, ORDER_NOT_CANCELLABLE, or
-        CONCURRENCY_CONFLICT.
+        the cancel is not allowed, another writer changed the order first, or an
+        idempotency key was reused. The code is one of INVALID_ORDER_STATE,
+        ORDER_NOT_CANCELLABLE, CONCURRENCY_CONFLICT, IDEMPOTENCY_KEY_REUSED, or
+        IDEMPOTENCY_REQUEST_IN_PROGRESS.
       content:
         application/json:
           schema:
@@ -571,6 +589,8 @@ components:
             - INVALID_ORDER_STATE
             - ORDER_NOT_CANCELLABLE
             - CONCURRENCY_CONFLICT
+            - IDEMPOTENCY_KEY_REUSED
+            - IDEMPOTENCY_REQUEST_IN_PROGRESS
             - INTERNAL_ERROR
         detail:
           type: string

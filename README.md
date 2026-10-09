@@ -79,6 +79,12 @@ match, it includes an `X-Next-Cursor` header. Pass that value back as
 omits the header. Pagination is not a snapshot: concurrent inserts or status
 changes can affect traversal.
 
+Order creation is idempotent when you send an `Idempotency-Key` header (1 to 128
+characters). A retry with the same key and an equivalent request replays the
+original response; a different request under the same key returns 409
+`IDEMPOTENCY_KEY_REUSED`. Keys expire after the retention window (default 24
+hours), after which the key can be reused.
+
 ## Health
 
 Two probes, the kind an orchestrator or load balancer polls:

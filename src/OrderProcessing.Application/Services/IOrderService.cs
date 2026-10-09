@@ -4,7 +4,10 @@ namespace OrderProcessing.Application.Services;
 
 public interface IOrderService
 {
-    Task<OrderDto> CreateAsync(CreateOrderRequest request, CancellationToken cancellationToken = default);
+    Task<OrderDto> CreateAsync(
+        CreateOrderRequest request,
+        string? idempotencyKey,
+        CancellationToken cancellationToken = default);
 
     Task<OrderDto> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 

@@ -16,6 +16,8 @@ public static class DependencyInjection
 {
     public const string RecurringJobId = "process-pending-orders";
 
+    public const string IdempotencyCleanupJobId = "idempotency-cleanup";
+
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration)
@@ -32,6 +34,7 @@ public static class DependencyInjection
         services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 
         services.AddScoped<IOrderRepository, OrderRepository>();
+        services.AddScoped<IIdempotencyStore, IdempotencyStore>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<IOrderProcessingService, OrderProcessingService>();
@@ -56,6 +59,12 @@ public static class DependencyInjection
             RecurringJobId,
             job => job.RunAsync(CancellationToken.None),
             options.CronExpression,
+            new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+        recurringJobs.AddOrUpdate<IdempotencyCleanupJob>(
+            IdempotencyCleanupJobId,
+            job => job.RunAsync(CancellationToken.None),
+            options.IdempotencyCleanupCronExpression,
             new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
     }
 }

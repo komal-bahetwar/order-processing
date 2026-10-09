@@ -393,8 +393,17 @@ the deployment. Logged here as it lands.
     pagination tests were made self-contained with a container per test. The
     same-timestamp tie case depends on the database's `Id` ordering, so the seek
     predicate is evaluated in the database, not the client.
-- **Human decisions**: one item at a time; IMP-10 (idempotency) remains, and
-  needs its own contract delta and gate.
+- **IMP-10, idempotency.** An optional `Idempotency-Key` on create, a durable
+  `idempotency_records` table committed in the same transaction as the order,
+  replay of the stored response, `IDEMPOTENCY_KEY_REUSED` and
+  `IDEMPOTENCY_REQUEST_IN_PROGRESS` codes, and a retention cleanup job. See
+  ADR-0013.
+  - **Issues found**: the new `IDEMPOTENCY_KEY_REUSED` code initially fell
+    through the error handler's default branch and returned 400 instead of 409;
+    the handler was taught the two idempotency codes. The concurrent-same-key
+    test exercises the unique-constraint race and confirms exactly one order.
+- **Human decisions**: Wave 3 completed one item at a time (IMP-12, IMP-11,
+  IMP-14, IMP-10). Each contract change carried its own ADR and OpenAPI delta.
 
 ## Keeping this current
 

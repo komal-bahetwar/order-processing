@@ -22,17 +22,28 @@ public sealed class OrderProcessingOptionsValidator : IValidateOptions<OrderProc
             failures.Add("OrderProcessing:MaxOrdersPerRun must be at least OrderProcessing:BatchSize.");
         }
 
-        try
+        if (options.IdempotencyRetentionHours < 1)
         {
-            CronExpression.Parse(options.CronExpression);
+            failures.Add("OrderProcessing:IdempotencyRetentionHours must be at least 1.");
         }
-        catch (Exception exception)
-        {
-            failures.Add($"OrderProcessing:CronExpression '{options.CronExpression}' is not valid: {exception.Message}");
-        }
+
+        ValidateCron(options.CronExpression, "OrderProcessing:CronExpression", failures);
+        ValidateCron(options.IdempotencyCleanupCronExpression, "OrderProcessing:IdempotencyCleanupCronExpression", failures);
 
         return failures.Count == 0
             ? ValidateOptionsResult.Success
             : ValidateOptionsResult.Fail(failures);
+    }
+
+    private static void ValidateCron(string expression, string key, List<string> failures)
+    {
+        try
+        {
+            CronExpression.Parse(expression);
+        }
+        catch (Exception exception)
+        {
+            failures.Add($"{key} '{expression}' is not valid: {exception.Message}");
+        }
     }
 }

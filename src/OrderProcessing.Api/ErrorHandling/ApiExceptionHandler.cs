@@ -77,6 +77,10 @@ public sealed class ApiExceptionHandler : IExceptionHandler
                 StatusCodes.Status409Conflict, "ORDER_NOT_CANCELLABLE", "Order not cancellable", domain.Message),
             "INVALID_ORDER_STATE" => (
                 StatusCodes.Status409Conflict, "INVALID_ORDER_STATE", "Invalid order state", domain.Message),
+            "IDEMPOTENCY_KEY_REUSED" => (
+                StatusCodes.Status409Conflict, "IDEMPOTENCY_KEY_REUSED", "Idempotency key reused", domain.Message),
+            "IDEMPOTENCY_REQUEST_IN_PROGRESS" => (
+                StatusCodes.Status409Conflict, "IDEMPOTENCY_REQUEST_IN_PROGRESS", "Idempotency request in progress", domain.Message),
             "INVALID_ID" => (
                 StatusCodes.Status400BadRequest, "INVALID_ID", "Invalid id", domain.Message),
             _ => (

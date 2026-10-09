@@ -7,8 +7,8 @@ it, and the evidence. It is the traceability index for the improvement effort.
 It separates what is implemented from what is planned, so no designed-only item
 is read as shipped.
 
-Last updated: 2026-10-10. Test suite at this point: 120 tests, all passing
-(62 unit, 11 architecture, 47 integration).
+Last updated: 2026-10-10. Test suite at this point: 138 tests, all passing
+(67 unit, 11 architecture, 60 integration).
 
 ## Status by work package
 
@@ -23,7 +23,7 @@ Last updated: 2026-10-10. Test suite at this point: 120 tests, all passing
 | IMP-07 | P2 | Implemented | `Directory.Packages.props` central versions; no per-project version pins | `BoundaryTests.The_build_and_package_policies_are_enabled` |
 | IMP-08 | P2 | Implemented | Extended `tests/OrderProcessing.ArchitectureTests` (`LayeringTests`, `BoundaryTests`) | The architecture test project itself |
 | IMP-09 | P2 | Implemented | This document plus the AI-use log | `docs/AI_USAGE.md` |
-| IMP-10 | P2 | Not started (Wave 3) | Requires an `Idempotency-Key` contract, a new table, and new error codes | n/a |
+| IMP-10 | P2 | Implemented (Wave 3) | `Idempotency-Key` on create, `idempotency_records` table (same-transaction commit), replay/reuse/in-progress outcomes, and a cleanup job (`src/OrderProcessing.Application/Idempotency/`, `Infrastructure/Persistence/IdempotencyStore.cs`, `Infrastructure/Jobs/IdempotencyCleanupJob.cs`); the contract adds the key header and two 409 codes (ADR-0013) | `IdempotencyTests` (13) and `IdempotencyFingerprintTests` (5) |
 | IMP-11 | P2 | Implemented (Wave 3) | Correlation middleware (`src/OrderProcessing.Api/Correlation/CorrelationMiddleware.cs`), request completion logging, and a job `BackgroundRunId` scope; the contract adds the `X-Correlation-ID` header (ADR-0011) | `CorrelationTests` (7) and `BackgroundRunScopeTests` |
 | IMP-12 | P2 | Implemented (Wave 3) | Optional Seq sink in `src/OrderProcessing.Api/Program.cs`; `seq` service in `docker-compose.yml`; README walkthrough | Verified: Seq UI 200 and the API serves with the sink configured; the query smoke is manual (sign in) |
 | IMP-13 | P1 | Implemented | `OrderProcessingOptionsValidator`, `ValidateOnStart`, the budgeted drain in `OrderProcessingService`, fail-fast registration in `Program.cs`, `[AutomaticRetry]` on the job | `OptionsValidationTests`; `BacklogDrainTests`; `TwoInstanceProcessingTests` |
@@ -51,7 +51,8 @@ rather than restating them.
 - **Correlation**: the `X-Correlation-ID` header and the request completion log
   (IMP-11; ADR-0011); the background-run identifier is the `BackgroundRunId`
   scope.
-- **Idempotency**: a future extension, IMP-10; the contract of record does not
-  yet include an `Idempotency-Key`.
+- **Idempotency**: implemented, IMP-10; the contract documents the
+  `Idempotency-Key` header and the `IDEMPOTENCY_KEY_REUSED` and
+  `IDEMPOTENCY_REQUEST_IN_PROGRESS` codes (ADR-0013).
 - **Structured logs in a browser (Seq)**: implemented, IMP-12; the console sink
   always works and Seq is an optional secondary sink.

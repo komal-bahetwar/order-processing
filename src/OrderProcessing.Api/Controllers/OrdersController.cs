@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using OrderProcessing.Application.Dtos;
+using OrderProcessing.Application.Idempotency;
 using OrderProcessing.Application.Services;
 using OrderProcessing.Domain;
 
@@ -34,11 +35,31 @@ public sealed class OrdersController : ControllerBase
         [FromBody] CreateOrderRequest request,
         CancellationToken cancellationToken)
     {
+        var idempotencyKey = ResolveIdempotencyKey();
+
         await _createValidator.ValidateAndThrowAsync(request, cancellationToken);
 
-        var order = await _orderService.CreateAsync(request, cancellationToken);
+        var order = await _orderService.CreateAsync(request, idempotencyKey, cancellationToken);
 
         return CreatedAtAction(nameof(GetById), new { id = order.Id }, order);
+    }
+
+    private string? ResolveIdempotencyKey()
+    {
+        var values = Request.Headers[IdempotencyKey.HeaderName];
+        if (values.Count == 0)
+        {
+            return null;
+        }
+
+        if (values.Count > 1 || !IdempotencyKey.IsValid(values[0]))
+        {
+            throw new DomainException(
+                "VALIDATION_ERROR",
+                $"The {IdempotencyKey.HeaderName} header must be a single value of 1 to {IdempotencyKey.MaxLength} characters from letters, digits, '.', '_', and '-'.");
+        }
+
+        return values[0];
     }
 
     [HttpGet("{id}")]

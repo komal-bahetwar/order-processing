@@ -9,4 +9,8 @@ public sealed class OrderProcessingOptions
     public int BatchSize { get; set; } = 200;
 
     public int MaxOrdersPerRun { get; set; } = 5000;
+
+    public int IdempotencyRetentionHours { get; set; } = 24;
+
+    public string IdempotencyCleanupCronExpression { get; set; } = "0 * * * *";
 }
