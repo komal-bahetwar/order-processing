@@ -158,3 +158,6 @@ Start here to understand the product and the decisions behind it.
   [future phases](docs/FUTURE_PHASES.md).
 - Process and AI: the [runbook](docs/AGENTIC_SDLC_RUNBOOK.md) and the
   [AI usage log](docs/AI_USAGE.md).
+- Improvements: the [improvement brief](docs/ORDER_PROCESSING_IMPROVEMENT_BRIEF.md),
+  the accepted [ADR-0009](docs/decisions/ADR-0009-harden-domain-invariants-and-scheduling.md),
+  and the [future phases](docs/FUTURE_PHASES.md).

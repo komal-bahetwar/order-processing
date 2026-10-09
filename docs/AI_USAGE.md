@@ -311,10 +311,10 @@ not review-loop outcomes.
 
 ## Wave 1 improvement delta (after G7)
 
-- **Prompt**: an external improvement brief the human supplied (kept in the
-  ignored `docs/scratch/`), which listed 14 work packages. The human selected
-  Wave 1: IMP-01 to IMP-04 (correctness hardening) and IMP-13 (scheduling
-  reliability).
+- **Prompt**: an external improvement brief,
+  `docs/ORDER_PROCESSING_IMPROVEMENT_BRIEF.md`, which listed 14 work packages.
+  The human selected Wave 1: IMP-01 to IMP-04 (correctness hardening) and
+  IMP-13 (scheduling reliability).
 - **What the AI produced**: a read-only aggregate collection; domain null and
   identity guards; shared money range rules; status parsing by defined name; an
   explicit transition relation with exhaustive matrices; validated scheduling
