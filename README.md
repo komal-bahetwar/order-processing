@@ -73,8 +73,38 @@ The contract is in `openapi/order-processing.yaml`.
 
 ## Health
 
-- `GET /health/live` liveness
-- `GET /health/ready` readiness, including the data store
+Two probes, the kind an orchestrator or load balancer polls:
+
+- `GET /health/live` liveness. Runs no dependency checks, so it stays 200 while the process is up.
+- `GET /health/ready` readiness. Also checks the data store, so it returns 503 when PostgreSQL is unreachable.
+
+Test them:
+
+```bash
+curl -i http://localhost:8080/health/live     # 200
+curl -i http://localhost:8080/health/ready    # 200, or 503 if the database is down
+```
+
+The status code carries the signal (200 healthy, 503 unhealthy); the body is the word `Healthy` or `Unhealthy`. To watch readiness flip, stop the database and check again:
+
+```bash
+docker compose stop postgres
+curl -i http://localhost:8080/health/ready    # 503 Unhealthy
+docker compose start postgres
+curl -i http://localhost:8080/health/ready    # 200 Healthy after a few seconds
+```
+
+If you overrode the API port, use it in place of 8080.
+
+## Background jobs and the Hangfire dashboard
+
+The automatic move from PENDING to PROCESSING runs as a Hangfire recurring job, `process-pending-orders`. In the Development environment the Hangfire dashboard is served at:
+
+```text
+http://localhost:8080/hangfire
+```
+
+It lists the recurring job, its schedule, and the history of runs, which is the place to look when a run fails. The dashboard is not authenticated, so it is mapped only in Development and is not part of the public API contract.
 
 ## Project layout
 

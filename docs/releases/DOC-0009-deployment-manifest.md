@@ -23,9 +23,9 @@ superseded_by: null
 This is the S6 deployment manifest, the A6.2 artifact for the G6 packet. It
 lists the components and their versions, the start order, how migrations apply,
 the configuration keys and their defaults, the ports, the feature-flag position,
-and the health endpoints used after deploy. It is a draft for the Engineering
-Manager and records no approval. The deployment scope and the run evidence are
-in DOC-0008; the deployment view and its deferred evolution are in DOC-0004.
+and the health endpoints used after deploy. The Engineering Manager approved it
+at G6, recorded in the frontmatter. The deployment scope and the run evidence
+are in DOC-0008; the deployment view and its deferred evolution are in DOC-0004.
 
 ## Components and versions
 
@@ -68,6 +68,7 @@ in its own tables, separate from the application migrations.
 | `ConnectionStrings__Default` | `Host=postgres;Port=5432;Database=orderprocessing;Username=postgres;Password=postgres` in compose; `Host=localhost;...` in `appsettings.json` | The data store connection string. The compose value points at the `postgres` service. A real deployment must supply it from the environment; the committed value is a local development default. |
 | `OrderProcessing:CronExpression` | `*/5 * * * *` | The Hangfire recurring schedule for the automatic move. The default runs every 5 minutes. |
 | `OrderProcessing:BatchSize` | `200` | The greatest number of pending orders the automatic move processes per run. |
+| `ASPNETCORE_ENVIRONMENT` | `Development` in compose | Selects the Development behavior, which serves Swagger and the Hangfire dashboard. A real deployment sets this explicitly and does not expose either. |
 | `API_PORT` | `8080` | The host port mapped to the API container port. |
 | `POSTGRES_PORT` | `5432` | The host port mapped to the database container port. |
 
@@ -94,3 +95,18 @@ entry.
 
 The 2026-10-09 deployment check used `GET /health/ready` and observed 200, as
 recorded in DOC-0008.
+
+## Operational endpoints (Development only)
+
+In Development two non-contract surfaces are served alongside the API, which is
+why the compose service runs as Development:
+
+| Route | Purpose |
+|---|---|
+| `/swagger` | The generated API explorer, from the controllers. |
+| `/hangfire` | The Hangfire dashboard: the `process-pending-orders` recurring job, its schedule, and its run history. Unauthenticated, so Development only. |
+
+Neither is part of the public contract in `openapi/order-processing.yaml`; both
+are operational aids for the local environment. The recurring job is registered
+through the dependency-injected `IRecurringJobManager` at startup, so the
+dashboard lists it and the automatic move runs on schedule.

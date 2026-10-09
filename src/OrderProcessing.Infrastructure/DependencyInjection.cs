@@ -44,11 +44,15 @@ public static class DependencyInjection
 
     public static void RegisterRecurringJobs(this IServiceProvider serviceProvider)
     {
-        var options = serviceProvider.GetRequiredService<IOptions<OrderProcessingOptions>>().Value;
+        using var scope = serviceProvider.CreateScope();
 
-        RecurringJob.AddOrUpdate<ProcessPendingOrdersJob>(
+        var options = scope.ServiceProvider.GetRequiredService<IOptions<OrderProcessingOptions>>().Value;
+        var recurringJobs = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+
+        recurringJobs.AddOrUpdate<ProcessPendingOrdersJob>(
             RecurringJobId,
             job => job.RunAsync(CancellationToken.None),
-            options.CronExpression);
+            options.CronExpression,
+            new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
     }
 }

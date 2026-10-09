@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
+using OrderProcessing.Api.Dashboard;
 using OrderProcessing.Api.ErrorHandling;
 using OrderProcessing.Api.Health;
 using OrderProcessing.Application.Dtos;
@@ -99,6 +100,14 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+
+    // The dashboard is unauthenticated, so it is exposed only in Development. The
+    // default filter allows only loopback, which a Docker port-forward does not
+    // present, so the dev dashboard allow-lists all callers.
+    app.UseHangfireDashboard("/hangfire", new DashboardOptions
+    {
+        Authorization = [new AllowAllDashboardAuthorizationFilter()]
+    });
 }
 
 app.MapControllers();

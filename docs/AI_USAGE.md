@@ -281,6 +281,34 @@ because the assignment grades both.
 | S0, open questions | The brief left four unknowns open with owners and due points. | A human asked how open questions should be handled. The decision was that each is resolved at the stage that owns it (the product and scope ones in the S1 PRD, the technical budgets in the S1 NFR), while the S0 baseline only lists unknowns with owners and due dates, never resolving them early by assumption. |
 | All stages, the AI usage log itself | The AI usage log could have been reconstructed at the end of the build. | A human asked when to capture it and directed it be maintained continuously, one entry per stage, so the prompts and the review findings are the ones that actually happened rather than a tidy retrospective. |
 
+## Post-close fixes
+
+After the work item closed at G7, the human ran the container and exercised
+Swagger, the health probes, and the Hangfire dashboard. That surfaced three
+gaps the gates had not caught, because S4 verified the endpoints through the
+test host and the integration tests, not through the packaged Development
+container. They are recorded here for honesty rather than folded into a stage.
+
+- **Swagger returned 404 in the container.** Compose did not set
+  `ASPNETCORE_ENVIRONMENT`, so the API ran as Production and Swagger, mapped
+  only in Development, was absent. Fixed by setting the environment to
+  Development in `docker-compose.yml`.
+- **The Hangfire dashboard was not reachable at all.** The service configured
+  Hangfire and the recurring job but never mapped the dashboard. It is now
+  mapped at `/hangfire` in Development, with an allow-all authorization filter
+  because Hangfire's default filter permits only loopback and a Docker
+  port-forward presents the bridge address.
+- **The automatic move never registered.** It used the static
+  `RecurringJob.AddOrUpdate`, which Hangfire 1.8 rejects at startup when
+  `JobStorage.Current` is not initialized, so no recurring job existed and the
+  move would never have run. Switched to the dependency-injected
+  `IRecurringJobManager`. The dashboard now shows `process-pending-orders` and
+  it runs on schedule.
+
+The README now documents testing the health probes and opening the dashboard.
+The three fixes are code and configuration changes, committed after the gate,
+not review-loop outcomes.
+
 ## Keeping this current
 
 Each stage appends one entry in the shape above: the prompt, what the AI
