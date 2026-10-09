@@ -43,19 +43,19 @@ public sealed class Order
 
     public void Process()
     {
-        EnsureStatus(OrderStatus.Pending, "ORDER_INVALID_STATE", "Only pending orders can be processed.");
+        EnsureStatus(OrderStatus.Pending, "INVALID_ORDER_STATE", "Only pending orders can be processed.");
         TransitionTo(OrderStatus.Processing);
     }
 
     public void Ship()
     {
-        EnsureStatus(OrderStatus.Processing, "ORDER_INVALID_STATE", "Only processing orders can be shipped.");
+        EnsureStatus(OrderStatus.Processing, "INVALID_ORDER_STATE", "Only processing orders can be shipped.");
         TransitionTo(OrderStatus.Shipped);
     }
 
     public void Deliver()
     {
-        EnsureStatus(OrderStatus.Shipped, "ORDER_INVALID_STATE", "Only shipped orders can be delivered.");
+        EnsureStatus(OrderStatus.Shipped, "INVALID_ORDER_STATE", "Only shipped orders can be delivered.");
         TransitionTo(OrderStatus.Delivered);
     }
 

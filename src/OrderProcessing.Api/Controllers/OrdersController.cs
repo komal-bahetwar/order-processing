@@ -49,18 +49,17 @@ public sealed class OrdersController : ControllerBase
         Ok(await _orderService.GetByIdAsync(ParseId(id), cancellationToken));
 
     [HttpGet]
-    [ProducesResponseType(typeof(PagedResult<OrderDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(IReadOnlyList<OrderDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<PagedResult<OrderDto>>> List(
+    public async Task<ActionResult<IReadOnlyList<OrderDto>>> List(
         [FromQuery] string? status,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] int limit = 20,
         CancellationToken cancellationToken = default)
     {
         await _listValidator.ValidateAndThrowAsync(
-            new ListOrdersQuery(status, page, pageSize), cancellationToken);
+            new ListOrdersQuery(status, limit), cancellationToken);
 
-        return Ok(await _orderService.ListAsync(status, page, pageSize, cancellationToken));
+        return Ok(await _orderService.ListAsync(status, limit, cancellationToken));
     }
 
     [HttpPatch("{id}/status")]

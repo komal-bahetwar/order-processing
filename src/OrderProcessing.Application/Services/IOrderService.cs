@@ -8,10 +8,9 @@ public interface IOrderService
 
     Task<OrderDto> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
-    Task<PagedResult<OrderDto>> ListAsync(
+    Task<IReadOnlyList<OrderDto>> ListAsync(
         string? status,
-        int page,
-        int pageSize,
+        int limit,
         CancellationToken cancellationToken = default);
 
     Task<OrderDto> UpdateStatusAsync(Guid id, string status, CancellationToken cancellationToken = default);

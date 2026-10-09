@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using OrderProcessing.Application;
 using OrderProcessing.Application.Abstractions;
 using OrderProcessing.Application.Services;
 using OrderProcessing.Infrastructure.Jobs;

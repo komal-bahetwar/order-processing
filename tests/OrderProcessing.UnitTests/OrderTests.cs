@@ -82,7 +82,7 @@ public class OrderTests
 
         var act = () => order.Process();
 
-        act.Should().Throw<DomainException>().Which.Code.Should().Be("ORDER_INVALID_STATE");
+        act.Should().Throw<DomainException>().Which.Code.Should().Be("INVALID_ORDER_STATE");
     }
 
     [Fact]
@@ -105,7 +105,41 @@ public class OrderTests
 
         var act = () => order.Ship();
 
-        act.Should().Throw<DomainException>().Which.Code.Should().Be("ORDER_INVALID_STATE");
+        act.Should().Throw<DomainException>().Which.Code.Should().Be("INVALID_ORDER_STATE");
+    }
+
+    [Fact]
+    public void Deliver_from_processing_is_rejected()
+    {
+        var order = Order.Create([Item()]);
+        order.Process();
+
+        var act = () => order.Deliver();
+
+        act.Should().Throw<DomainException>().Which.Code.Should().Be("INVALID_ORDER_STATE");
+    }
+
+    [Fact]
+    public void Process_from_a_terminal_state_is_rejected()
+    {
+        var order = Order.Create([Item()]);
+        order.Cancel();
+
+        var act = () => order.Process();
+
+        act.Should().Throw<DomainException>().Which.Code.Should().Be("INVALID_ORDER_STATE");
+    }
+
+    [Fact]
+    public void Ship_from_shipped_is_rejected()
+    {
+        var order = Order.Create([Item()]);
+        order.Process();
+        order.Ship();
+
+        var act = () => order.Ship();
+
+        act.Should().Throw<DomainException>().Which.Code.Should().Be("INVALID_ORDER_STATE");
     }
 
     [Fact]

@@ -1,20 +1,24 @@
+using Microsoft.Extensions.Logging;
 using OrderProcessing.Application.Abstractions;
 using OrderProcessing.Application.Dtos;
 using OrderProcessing.Application.Mapping;
+using OrderProcessing.Application.Observability;
 using OrderProcessing.Domain;
 
 namespace OrderProcessing.Application.Services;
 
 public sealed class OrderService : IOrderService
 {
-    private const int DefaultPageSize = 20;
-    private const int MaxPageSize = 100;
+    private const int DefaultLimit = 20;
+    private const int MaxLimit = 100;
 
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<OrderService> _logger;
 
-    public OrderService(IUnitOfWork unitOfWork)
+    public OrderService(IUnitOfWork unitOfWork, ILogger<OrderService> logger)
     {
         _unitOfWork = unitOfWork;
+        _logger = logger;
     }
 
     public async Task<OrderDto> CreateAsync(CreateOrderRequest request, CancellationToken cancellationToken = default)
@@ -36,10 +40,9 @@ public sealed class OrderService : IOrderService
         return order.ToDto();
     }
 
-    public async Task<PagedResult<OrderDto>> ListAsync(
+    public async Task<IReadOnlyList<OrderDto>> ListAsync(
         string? status,
-        int page,
-        int pageSize,
+        int limit,
         CancellationToken cancellationToken = default)
     {
         OrderStatus? filter = null;
@@ -53,17 +56,11 @@ public sealed class OrderService : IOrderService
             filter = parsed;
         }
 
-        page = page < 1 ? 1 : page;
-        pageSize = pageSize < 1 ? DefaultPageSize : Math.Min(pageSize, MaxPageSize);
+        var take = limit < 1 ? DefaultLimit : Math.Min(limit, MaxLimit);
 
-        var (items, total) = await _unitOfWork.Orders.GetPagedAsync(
-            filter, (page - 1) * pageSize, pageSize, cancellationToken);
+        var orders = await _unitOfWork.Orders.GetAsync(filter, take, cancellationToken);
 
-        return new PagedResult<OrderDto>(
-            items.Select(order => order.ToDto()).ToList(),
-            page,
-            pageSize,
-            total);
+        return orders.Select(order => order.ToDto()).ToList();
     }
 
     public async Task<OrderDto> UpdateStatusAsync(Guid id, string status, CancellationToken cancellationToken = default)
@@ -81,6 +78,7 @@ public sealed class OrderService : IOrderService
             return order.ToDto();
         }
 
+        var from = order.Status;
         switch (target)
         {
             case OrderStatus.Shipped:
@@ -91,11 +89,12 @@ public sealed class OrderService : IOrderService
                 break;
             default:
                 throw new DomainException(
-                    "ORDER_INVALID_STATE",
+                    "INVALID_ORDER_STATE",
                     $"A change to {target} is not an accepted manual transition.");
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        RecordTransition(order, from);
 
         return order.ToDto();
     }
@@ -105,10 +104,26 @@ public sealed class OrderService : IOrderService
         var order = await _unitOfWork.Orders.GetByIdAsync(id, cancellationToken)
             ?? throw NotFound(id);
 
+        var from = order.Status;
         order.Cancel();
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        RecordTransition(order, from);
 
         return order.ToDto();
+    }
+
+    private void RecordTransition(Order order, OrderStatus from)
+    {
+        _logger.LogInformation(
+            "Order {OrderId} transitioned {OldStatus} -> {NewStatus}",
+            order.Id,
+            from,
+            order.Status);
+
+        OrderMetrics.Transitions.Add(
+            1,
+            new KeyValuePair<string, object?>("from", from.ToString().ToUpperInvariant()),
+            new KeyValuePair<string, object?>("to", order.Status.ToString().ToUpperInvariant()));
     }
 
     private static DomainException NotFound(Guid id) =>

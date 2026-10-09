@@ -51,6 +51,14 @@ public class OrdersApiTests : IClassFixture<OrderApiFactory>
     }
 
     [Fact]
+    public async Task Create_with_negative_price_returns_bad_request()
+    {
+        var response = await CreateOrderAsync(new CreateOrderItemRequest(Guid.NewGuid(), 1, -0.01m));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task Get_by_id_returns_the_order()
     {
         var created = await CreateAndReadOrderAsync();
@@ -82,21 +90,30 @@ public class OrdersApiTests : IClassFixture<OrderApiFactory>
     {
         var order = await CreateAndReadOrderAsync();
 
-        var pending = await _client.GetFromJsonAsync<PagedResult<OrderDto>>("/api/orders?status=PENDING");
-        pending!.Items.Should().Contain(item => item.Id == order.Id);
+        var pending = await _client.GetFromJsonAsync<List<OrderDto>>("/api/orders?status=PENDING");
+        pending!.Should().Contain(item => item.Id == order.Id);
 
-        var shipped = await _client.GetFromJsonAsync<PagedResult<OrderDto>>("/api/orders?status=SHIPPED");
-        shipped!.Items.Should().NotContain(item => item.Id == order.Id);
+        var shipped = await _client.GetFromJsonAsync<List<OrderDto>>("/api/orders?status=SHIPPED");
+        shipped!.Should().NotContain(item => item.Id == order.Id);
     }
 
     [Fact]
-    public async Task List_clamps_a_request_over_the_maximum_bound()
+    public async Task List_rejects_a_zero_limit()
+    {
+        var response = await _client.GetAsync("/api/orders?limit=0");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task List_accepts_an_over_maximum_limit_and_clamps()
     {
         await CreateAndReadOrderAsync();
 
-        var result = await _client.GetFromJsonAsync<PagedResult<OrderDto>>("/api/orders?pageSize=500");
+        var result = await _client.GetFromJsonAsync<List<OrderDto>>("/api/orders?limit=500");
 
-        result!.PageSize.Should().Be(100);
+        result.Should().NotBeNull();
+        result!.Count.Should().BeLessThanOrEqualTo(100);
     }
 
     [Fact]
@@ -104,6 +121,36 @@ public class OrdersApiTests : IClassFixture<OrderApiFactory>
     {
         var order = await CreateAndReadOrderAsync();
         await ProcessPendingAsync(order.Id);
+
+        var response = await _client.PatchAsJsonAsync(
+            $"/api/orders/{order.Id}/status", new UpdateStatusRequest("Shipped"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = await response.Content.ReadFromJsonAsync<OrderDto>();
+        updated!.Status.Should().Be("SHIPPED");
+    }
+
+    [Fact]
+    public async Task Advance_status_moves_shipped_orders_to_delivered()
+    {
+        var order = await CreateAndReadOrderAsync();
+        await ProcessPendingAsync(order.Id);
+        await _client.PatchAsJsonAsync($"/api/orders/{order.Id}/status", new UpdateStatusRequest("Shipped"));
+
+        var response = await _client.PatchAsJsonAsync(
+            $"/api/orders/{order.Id}/status", new UpdateStatusRequest("Delivered"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = await response.Content.ReadFromJsonAsync<OrderDto>();
+        updated!.Status.Should().Be("DELIVERED");
+    }
+
+    [Fact]
+    public async Task A_repeat_of_the_current_status_is_a_no_op()
+    {
+        var order = await CreateAndReadOrderAsync();
+        await ProcessPendingAsync(order.Id);
+        await _client.PatchAsJsonAsync($"/api/orders/{order.Id}/status", new UpdateStatusRequest("Shipped"));
 
         var response = await _client.PatchAsJsonAsync(
             $"/api/orders/{order.Id}/status", new UpdateStatusRequest("Shipped"));

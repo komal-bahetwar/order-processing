@@ -7,14 +7,9 @@ public sealed class ListOrdersQueryValidator : AbstractValidator<ListOrdersQuery
 {
     public ListOrdersQueryValidator()
     {
-        RuleFor(query => query.Page)
+        RuleFor(query => query.Limit)
             .GreaterThanOrEqualTo(1)
             .WithErrorCode("VALIDATION_ERROR")
-            .WithMessage("Page must be at least 1.");
-
-        RuleFor(query => query.PageSize)
-            .GreaterThanOrEqualTo(1)
-            .WithErrorCode("VALIDATION_ERROR")
-            .WithMessage("Page size must be at least 1.");
+            .WithMessage("The limit must be at least 1.");
     }
 }

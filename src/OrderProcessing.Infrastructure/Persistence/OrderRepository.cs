@@ -18,9 +18,8 @@ public sealed class OrderRepository : IOrderRepository
             .Include(order => order.Items)
             .FirstOrDefaultAsync(order => order.Id == id, cancellationToken);
 
-    public async Task<(IReadOnlyList<Order> Items, int TotalCount)> GetPagedAsync(
+    public async Task<IReadOnlyList<Order>> GetAsync(
         OrderStatus? status,
-        int skip,
         int take,
         CancellationToken cancellationToken = default)
     {
@@ -34,19 +33,14 @@ public sealed class OrderRepository : IOrderRepository
             query = query.Where(order => order.Status == status);
         }
 
-        var totalCount = await query.CountAsync(cancellationToken);
-
-        var items = await query
+        return await query
             .OrderBy(order => order.CreatedAt)
             .ThenBy(order => order.Id)
-            .Skip(skip)
             .Take(take)
             .ToListAsync(cancellationToken);
-
-        return (items, totalCount);
     }
 
-    public async Task<IReadOnlyList<Order>> GetPendingAsync(
+    public async Task<IReadOnlyList<Guid>> GetPendingIdsAsync(
         int batchSize,
         CancellationToken cancellationToken = default) =>
         await _dbContext.Orders
@@ -54,6 +48,7 @@ public sealed class OrderRepository : IOrderRepository
             .OrderBy(order => order.CreatedAt)
             .ThenBy(order => order.Id)
             .Take(batchSize)
+            .Select(order => order.Id)
             .ToListAsync(cancellationToken);
 
     public void Add(Order order) => _dbContext.Orders.Add(order);

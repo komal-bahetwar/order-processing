@@ -1,40 +1,71 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using OrderProcessing.Application.Abstractions;
 using OrderProcessing.Application.Exceptions;
+using OrderProcessing.Application.Observability;
 using OrderProcessing.Domain;
 
 namespace OrderProcessing.Application.Services;
 
 public sealed class OrderProcessingService : IOrderProcessingService
 {
-    private const int DefaultBatchSize = 200;
-
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<OrderProcessingService> _logger;
+    private readonly int _batchSize;
 
-    public OrderProcessingService(IUnitOfWork unitOfWork)
+    public OrderProcessingService(
+        IUnitOfWork unitOfWork,
+        IOptions<OrderProcessingOptions> options,
+        ILogger<OrderProcessingService> logger)
     {
         _unitOfWork = unitOfWork;
+        _logger = logger;
+        _batchSize = options.Value.BatchSize;
     }
 
     public async Task<int> ProcessPendingOrdersAsync(CancellationToken cancellationToken = default)
     {
-        var pending = await _unitOfWork.Orders.GetPendingAsync(DefaultBatchSize, cancellationToken);
+        var pendingIds = await _unitOfWork.Orders.GetPendingIdsAsync(_batchSize, cancellationToken);
 
         var processed = 0;
-        foreach (var order in pending)
+        foreach (var id in pendingIds)
         {
             try
             {
+                var order = await _unitOfWork.Orders.GetByIdAsync(id, cancellationToken);
+                if (order is null || order.Status != OrderStatus.Pending)
+                {
+                    continue;
+                }
+
                 order.Process();
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
+
                 processed++;
+                _logger.LogInformation(
+                    "Order {OrderId} transitioned {OldStatus} -> {NewStatus}",
+                    order.Id,
+                    OrderStatus.Pending,
+                    order.Status);
+                OrderMetrics.Transitions.Add(
+                    1,
+                    new KeyValuePair<string, object?>("from", "PENDING"),
+                    new KeyValuePair<string, object?>("to", "PROCESSING"));
             }
             catch (ConcurrencyConflictException)
             {
-                // Another actor changed the order first; leave it for the winner.
+                _unitOfWork.ClearChanges();
+                _logger.LogInformation(
+                    "Order {OrderId} was changed by another writer before the automatic move; skipping.",
+                    id);
             }
-            catch (DomainException)
+            catch (DomainException exception)
             {
-                // The order already left PENDING; the move is idempotent.
+                _unitOfWork.ClearChanges();
+                _logger.LogInformation(
+                    "Order {OrderId} was not moved by the automatic run: {Code}.",
+                    id,
+                    exception.Code);
             }
         }
 

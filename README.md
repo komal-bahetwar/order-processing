@@ -49,7 +49,7 @@ Base path `/api/orders`.
 |---|---|---|
 | POST | `/api/orders` | Create an order |
 | GET | `/api/orders/{id}` | Get an order by id |
-| GET | `/api/orders?status=PENDING&page=1&pageSize=20` | List and filter orders |
+| GET | `/api/orders?status=PENDING&limit=20` | List and filter orders (limit default 20, capped at 100) |
 | PATCH | `/api/orders/{id}/status` | Advance the status (PROCESSING to SHIPPED, SHIPPED to DELIVERED) |
 | POST | `/api/orders/{id}/cancel` | Cancel a pending order |
 

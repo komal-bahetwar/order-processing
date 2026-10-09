@@ -33,4 +33,6 @@ public sealed class UnitOfWork : IUnitOfWork
             throw new ConcurrencyConflictException(order?.Id ?? Guid.Empty);
         }
     }
+
+    public void ClearChanges() => _dbContext.ChangeTracker.Clear();
 }

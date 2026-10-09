@@ -1,4 +1,4 @@
-namespace OrderProcessing.Infrastructure;
+namespace OrderProcessing.Application;
 
 public sealed class OrderProcessingOptions
 {
