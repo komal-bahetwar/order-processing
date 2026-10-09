@@ -21,6 +21,7 @@ services:
       dockerfile: Dockerfile
     environment:
       ASPNETCORE_URLS: http://+:8080
+      ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Default: Host=postgres;Port=5432;Database=orderprocessing;Username=postgres;Password=postgres
     ports:
       - "${API_PORT:-8080}:8080"
