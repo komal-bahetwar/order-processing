@@ -19,3 +19,7 @@ artifacts/
 
 # Local env
 .env
+
+scratch/
+
+/scratch
